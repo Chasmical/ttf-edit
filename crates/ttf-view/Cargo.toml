@@ -11,4 +11,5 @@ license = "MIT OR Apache-2.0"
 readme = "../../README.md"
 
 [dependencies]
+chrono = "0.4.45"
 zerocopy = "0.8.55"
