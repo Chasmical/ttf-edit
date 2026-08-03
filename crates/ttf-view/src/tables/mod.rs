@@ -1,5 +1,7 @@
 use crate::types::{Offset32, Tag, uint16, uint32};
 
+pub mod cmap;
+
 #[repr(C)]
 pub struct TableDirectoryRepr {
     table_data: [u8; 0],
