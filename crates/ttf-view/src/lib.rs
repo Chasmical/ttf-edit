@@ -1,5 +1,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_default)]
+#![feature(const_convert)]
 #![feature(const_clone)]
 #![feature(const_cmp)]
 #![feature(derive_const)]

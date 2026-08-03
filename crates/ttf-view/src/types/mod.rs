@@ -15,8 +15,11 @@ pub type Offset16 = uint16;
 // TODO: pub type Offset24 = uint24;
 pub type Offset32 = uint32;
 
+mod tag;
+
+pub use tag::*;
+
 // TODO: Version16Dot16
-pub type Tag = [u8; 4]; // TODO: Tag
 // TODO: LongDateTime
 // TODO: Fixed
 // TODO: F2DOT14
