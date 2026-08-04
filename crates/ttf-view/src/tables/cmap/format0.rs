@@ -17,9 +17,8 @@ const impl Default for CmapSubtable0 {
 impl CmapSubtable for CmapSubtable0 {
     type Iter<'a> = Iter<'a>;
 
-    fn glyph_id(&self, codepoint: Codepoint) -> Option<GlyphId> {
-        let id = *self.glyph_id_array.get(usize::from(codepoint))?;
-        id.try_into().ok()
+    fn glyph_id(&self, codepoint: Codepoint) -> GlyphId {
+        (*self.glyph_id_array.get(usize::from(codepoint))?).into()
     }
     fn codepoint(&self, glyph_id: GlyphId) -> Option<Codepoint> {
         let glyph_id: u8 = glyph_id.try_into().ok()?;
@@ -46,6 +45,6 @@ impl<'a> Iterator for Iter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let (idx, &id) = self.0.next()?;
-        Some(((idx as u32).into(), id.try_into().ok()?))
+        Some(((idx as u32).into(), id.into()))
     }
 }

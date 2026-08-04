@@ -7,7 +7,7 @@ pub use codepoint::*;
 pub use glyph_id::*;
 
 pub mod format0;
-// TODO: pub mod format2;
+pub mod format2;
 // TODO: pub mod format4;
 // TODO: pub mod format6;
 // TODO: pub mod format8;
@@ -61,7 +61,7 @@ impl CmapSubtableRepr {
 pub trait CmapSubtable {
     type Iter<'a>: Iterator<Item = (Codepoint, GlyphId)>
     where Self: 'a;
-    fn glyph_id(&self, codepoint: Codepoint) -> Option<GlyphId>;
+    fn glyph_id(&self, codepoint: Codepoint) -> GlyphId;
     fn codepoint(&self, glyph_id: GlyphId) -> Option<Codepoint>;
     fn iter(&self) -> Self::Iter<'_>;
 }

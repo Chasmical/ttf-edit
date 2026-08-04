@@ -1,21 +1,27 @@
 use crate::types::impl_fmt_from_getter;
-use std::num::NonZero;
+use std::{convert::Infallible, ops::FromResidual};
 
 #[derive(Copy, Hash)]
-#[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct GlyphId(NonZero<u32>);
+#[derive_const(Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct GlyphId(u16);
 
 impl GlyphId {
-    pub const fn new(value: u32) -> Option<Self> {
-        NonZero::new(value).map(Self)
+    pub const fn new(value: u16) -> Self {
+        Self(value)
     }
 
-    pub const fn get_nonzero(&self) -> NonZero<u32> {
+    pub const fn is_def(&self) -> bool {
+        self.0 != 0
+    }
+    pub const fn is_notdef(&self) -> bool {
+        self.0 == 0
+    }
+
+    pub const fn get(&self) -> u16 {
         self.0
     }
-    pub const fn get(&self) -> u32 {
-        self.0.get()
-    }
+
+    pub const NOTDEF: Self = Self::new(0);
 }
 
 impl_fmt_from_getter! {
@@ -23,28 +29,26 @@ impl_fmt_from_getter! {
 }
 
 // Conversions from std integer types to GlyphId
-impl TryFrom<u8> for GlyphId {
-    type Error = ();
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        Self::new(value as u32).ok_or(())
+impl From<u8> for GlyphId {
+    fn from(value: u8) -> Self {
+        Self::new(value as u16)
     }
 }
-impl TryFrom<u16> for GlyphId {
-    type Error = ();
-    fn try_from(value: u16) -> Result<Self, Self::Error> {
-        Self::new(value as u32).ok_or(())
+impl From<u16> for GlyphId {
+    fn from(value: u16) -> Self {
+        Self::new(value)
     }
 }
 impl TryFrom<u32> for GlyphId {
     type Error = ();
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        Self::new(value).ok_or(())
+        Ok(Self::new(value.try_into().or(Err(()))?))
     }
 }
 impl TryFrom<usize> for GlyphId {
     type Error = ();
     fn try_from(value: usize) -> Result<Self, Self::Error> {
-        Self::new(value.try_into().or(Err(()))?).ok_or(())
+        Ok(Self::new(value.try_into().or(Err(()))?))
     }
 }
 
@@ -55,19 +59,25 @@ impl TryFrom<GlyphId> for u8 {
         value.get().try_into().or(Err(()))
     }
 }
-impl TryFrom<GlyphId> for u16 {
-    type Error = ();
-    fn try_from(value: GlyphId) -> Result<Self, Self::Error> {
-        value.get().try_into().or(Err(()))
+impl From<GlyphId> for u16 {
+    fn from(value: GlyphId) -> Self {
+        value.get()
     }
 }
 impl From<GlyphId> for u32 {
     fn from(value: GlyphId) -> Self {
-        value.get()
+        value.get() as u32
     }
 }
 impl From<GlyphId> for usize {
     fn from(value: GlyphId) -> Self {
         value.get() as usize
+    }
+}
+
+// Allow using ? to return .notdef in functions returning GlyphId
+const impl FromResidual<Option<Infallible>> for GlyphId {
+    fn from_residual(_residual: Option<Infallible>) -> Self {
+        Self::NOTDEF
     }
 }
