@@ -1,4 +1,4 @@
-use std::fmt;
+use crate::types::impl_fmt_with;
 
 macro_rules! impl_fixed_point_number {
     (
@@ -63,20 +63,16 @@ macro_rules! impl_fixed_point_number {
             }
         }
 
-        impl fmt::Debug for $Name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Display::fmt(self, f)
-            }
-        }
-        impl fmt::Display for $Name {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                let mut val = self.get();
+        impl_fmt_with! {
+            Debug, Display, LowerExp, UpperExp:
+            |x: &$Name, f| {
+                let mut val = x.get();
 
                 if f.precision().is_none() {
                     const MULT: $fp = 10u32.pow($Name::PRECISION) as $fp;
                     val = (val * MULT).round() / MULT;
                 }
-                val.fmt(f)
+                val
             }
         }
 
@@ -134,6 +130,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn precision() {
+        assert_eq!(Fixed::PRECISION, 4);
+        assert_eq!(F2DOT14::PRECISION, 3);
+
+        let f = Fixed::from_be_bytes(0x0001999A_u32.to_be_bytes());
+        assert_eq!(format!("{}", f), "1.6");
+        assert_eq!(format!("{:.0}", f), "2");
+        assert_eq!(format!("{:.1}", f), "1.6");
+        assert_eq!(format!("{:.3}", f), "1.600");
+        assert_eq!(format!("{:.7}", f), "1.6000061");
+    }
+
+    #[test]
     fn fixed() {
         let nums: [(u32, f64); _] = [
             (0x7FFF_FFFF, 32767.999985),
@@ -149,8 +158,6 @@ mod tests {
             (0xFFBF_FF00, -64.003906),
             (0x8000_0000, -32768.000000),
         ];
-
-        assert_eq!(Fixed::PRECISION, 4);
 
         for (raw, fp) in nums {
             let real = Fixed::new(fp).unwrap().frac_num() as u32;
@@ -176,8 +183,6 @@ mod tests {
             (0xFF7B, -0.008118),
             (0x8000, -2.000000),
         ];
-
-        assert_eq!(F2DOT14::PRECISION, 3);
 
         for (raw, fp) in nums {
             let real = F2DOT14::new(fp).unwrap().frac_num() as u16;

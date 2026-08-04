@@ -1,4 +1,4 @@
-use crate::types::impl_fmt_from_getter;
+use crate::types::impl_fmt_with;
 
 #[derive(Copy, Hash)]
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -13,8 +13,9 @@ impl Codepoint {
     }
 }
 
-impl_fmt_from_getter! {
-    Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp for Codepoint
+impl_fmt_with! {
+    Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp:
+    |x: &Codepoint| x.get()
 }
 
 // Conversions from std integer types to Codepoint

@@ -1,4 +1,4 @@
-use crate::types::impl_fmt_from_getter;
+use crate::types::impl_fmt_with;
 use std::{convert::Infallible, ops::FromResidual};
 
 #[derive(Copy, Hash)]
@@ -24,8 +24,9 @@ impl GlyphId {
     pub const NOTDEF: Self = Self::new(0);
 }
 
-impl_fmt_from_getter! {
-    Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp for GlyphId
+impl_fmt_with! {
+    Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp:
+    |x: &GlyphId| x.get()
 }
 
 // Conversions from std integer types to GlyphId

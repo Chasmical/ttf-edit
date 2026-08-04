@@ -28,13 +28,22 @@ pub use uint24mod::*;
 pub use version16dot16::*;
 
 // Utility macro for formatting wrapper types, like uint24
-macro_rules! impl_fmt_from_getter {
-    ($($Trait:ident),* for $Struct:ty) => ($(
-        impl std::fmt::$Trait for $Struct {
+macro_rules! impl_fmt_with {
+    ($($Trait:ident),*: |$arg:ident: &$Name:ty| $closure:expr) => ($(
+        impl std::fmt::$Trait for $Name {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                std::fmt::$Trait::fmt(&self.get(), f)
+                let $arg = self;
+                std::fmt::$Trait::fmt(&$closure, f)
+            }
+        }
+    )*);
+    ($($Trait:ident),*: |$arg:ident: &$Name:ty, $f:ident| $closure:expr) => ($(
+        impl std::fmt::$Trait for $Name {
+            fn fmt(&self, $f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let $arg = self;
+                std::fmt::$Trait::fmt(&$closure, $f)
             }
         }
     )*);
 }
-pub(crate) use impl_fmt_from_getter;
+pub(crate) use impl_fmt_with;
