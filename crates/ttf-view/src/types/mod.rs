@@ -15,18 +15,17 @@ pub type Offset16 = uint16;
 pub type Offset24 = uint24;
 pub type Offset32 = uint32;
 
+mod fixed_point;
 mod longdatetime;
 mod tag;
 mod uint24mod;
 mod version16dot16;
 
+pub use fixed_point::*;
 pub use longdatetime::*;
 pub use tag::*;
 pub use uint24mod::*;
 pub use version16dot16::*;
-
-// TODO: Fixed
-// TODO: F2DOT14
 
 // Utility macro for formatting wrapper types, like uint24
 macro_rules! impl_fmt_from_getter {
