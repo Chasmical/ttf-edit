@@ -1,5 +1,8 @@
 use crate::{
-    tables::cmap::CmapTableRepr,
+    tables::{
+        cmap::CmapTableRepr, head::HeadTableRepr, hhea::HheaTableRepr, maxp::MaxpTableRepr,
+        name::NameTableRepr,
+    },
     types::{Offset32, Tag, tags, uint16, uint32},
 };
 use std::fmt;
@@ -40,21 +43,26 @@ impl TableDirectoryRepr {
         unsafe { std::slice::from_raw_parts(self.table_records.as_ptr(), len) }
     }
 
-    pub(crate) const unsafe fn find_table<T>(&self, tag: Tag) -> Option<&T> {
-        let tables = self.table_records();
-        let mut idx = 0;
-        while idx < tables.len() {
-            let table = &tables[idx];
-            if table.table_tag == tag {
-                return Some(unsafe { table.data_cast::<T>(self) });
-            }
-            idx += 1;
-        }
-        None
+    pub fn table<T: Table>(&self) -> Option<&T> {
+        let table = self.table_records().iter().find(|t| t.table_tag == T::TAG)?;
+        Some(unsafe { table.get_unchecked::<T>(self) })
     }
 
-    pub const fn cmap(&self) -> &CmapTableRepr {
-        unsafe { self.find_table(tags::cmap).unwrap() }
+    // Note: These are all required tables, so we'll panic on their absence.
+    pub fn cmap(&self) -> &CmapTableRepr {
+        self.table().unwrap()
+    }
+    pub fn head(&self) -> &HeadTableRepr {
+        self.table().unwrap()
+    }
+    pub fn hhea(&self) -> &HheaTableRepr {
+        self.table().unwrap()
+    }
+    pub fn maxp(&self) -> &MaxpTableRepr {
+        self.table().unwrap()
+    }
+    pub fn name(&self) -> &NameTableRepr {
+        self.table().unwrap()
     }
 }
 
@@ -65,9 +73,34 @@ impl TableRecordRepr {
             std::slice::from_raw_parts(start, self.length.get() as _)
         }
     }
-    pub const unsafe fn data_cast<'a, T>(&'a self, dir: &'a TableDirectoryRepr) -> &'a T {
+
+    pub const fn get<'a, T: Table>(&'a self, dir: &'a TableDirectoryRepr) -> Option<&'a T> {
+        if self.table_tag == T::TAG { Some(unsafe { self.get_unchecked(dir) }) } else { None }
+    }
+    pub const unsafe fn get_unchecked<'a, T: Table>(
+        &'a self,
+        dir: &'a TableDirectoryRepr,
+    ) -> &'a T {
+        debug_assert!(self.table_tag == T::TAG);
         unsafe { &*dir.table_data.as_ptr().add(self.offset.get() as _).cast() }
     }
+}
+
+pub trait Table {
+    const TAG: Tag;
+}
+
+macro_rules! impl_table_trait {
+    ($($tag:expr => $table:ty),* $(,)?) => (
+        $( impl Table for $table { const TAG: Tag = $tag; } )*
+    );
+}
+impl_table_trait! {
+    tags::cmap => CmapTableRepr,
+    tags::head => HeadTableRepr,
+    tags::hhea => HheaTableRepr,
+    tags::maxp => MaxpTableRepr,
+    tags::name => NameTableRepr,
 }
 
 impl fmt::Debug for TableDirectoryRepr {
