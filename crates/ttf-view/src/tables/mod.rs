@@ -1,4 +1,7 @@
-use crate::types::{Offset32, Tag, uint16, uint32};
+use crate::{
+    tables::cmap::CmapTableRepr,
+    types::{Offset32, Tag, tags, uint16, uint32},
+};
 
 pub mod cmap;
 
@@ -32,7 +35,22 @@ impl TableDirectoryRepr {
         }
     }
 
-    // TODO: separate methods for each table?
+    pub(crate) const unsafe fn find_table<T>(&self, tag: Tag) -> Option<&T> {
+        let tables = self.tables();
+        let mut idx = 0;
+        while idx < tables.len() {
+            let table = &tables[idx];
+            if table.table_tag == tag {
+                return Some(unsafe { table.data_cast(self) });
+            }
+            idx += 1;
+        }
+        None
+    }
+
+    pub const fn cmap(&self) -> &CmapTableRepr {
+        unsafe { self.find_table(tags::cmap).unwrap() }
+    }
 }
 
 impl TableRecordRepr {
@@ -41,5 +59,8 @@ impl TableRecordRepr {
             let start = dir.table_data.as_ptr().add(self.offset.get() as _);
             std::slice::from_raw_parts(start, self.length.get() as _)
         }
+    }
+    pub const unsafe fn data_cast<'a, T>(&'a self, dir: &'a TableDirectoryRepr) -> &'a T {
+        unsafe { &*dir.table_data.as_ptr().add(self.offset.get() as _).cast() }
     }
 }

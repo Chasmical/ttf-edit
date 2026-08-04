@@ -64,6 +64,30 @@ impl Tag {
     }
 }
 
+macro_rules! define_known_tags {
+    ( $($tag:ident $(= $s:expr)?),* $(,)? ) => {
+        impl Tag {
+            pub const KNOWN_TAGS: &[Tag] = &[ $( tags::$tag, )* ];
+        }
+
+        #[allow(non_upper_case_globals)]
+        pub mod tags {
+            use super::Tag;
+
+            $( pub const $tag: Tag = Tag::from_str(define_known_tags!(@value $tag $(= $s)?)).ok().unwrap(); )*
+        }
+    };
+    (@value $tag:ident) => (stringify!($tag));
+    (@value $tag:ident = $s:expr) => ($s);
+}
+
+define_known_tags! {
+    avar, BASE, CBDT, CBLC, CFF, CFF2, cmap, COLR, CPAL, cvar, cvt, DSIG, EBDT, EBLC, EBSC, fpgm,
+    fvar, gasp, GDEF, glyf, GPOS, GSUB, gvar, hdmx, head, hhea, hmtx, HVAR, JSTF, kern, loca, LTSH,
+    MATH, maxp, MERG, meta, MVAR, name, OS_2 = "OS/2", PCLT, post, prep, sbix, STAT, SVG, VDMX,
+    vhea, vmtx, VORG, VVAR,
+}
+
 impl fmt::Debug for Tag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_str().fmt(f)
