@@ -5,6 +5,9 @@ use crate::{
 use std::fmt;
 
 pub mod cmap;
+pub mod head;
+pub mod hhea;
+pub mod maxp;
 
 #[repr(C)]
 #[non_exhaustive]
