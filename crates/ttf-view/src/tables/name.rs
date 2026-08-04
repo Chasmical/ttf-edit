@@ -2,6 +2,7 @@ use crate::{
     tables::cmap::{Encoding, encodings::EncodingError},
     types::{Offset16, uint16},
 };
+use std::fmt;
 
 #[repr(C)]
 #[non_exhaustive]
@@ -95,5 +96,65 @@ impl NameRecordRepr {
 
         // TODO: After the issue with encodings is resolved, use them to decode strings here.
         Err(EncodingError)
+    }
+}
+
+impl fmt::Debug for NameTableRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut builder = f.debug_struct("NameTableRepr");
+
+        builder
+            .field("version", &self.version.get())
+            .field("count", &self.count.get())
+            .field_with("storage_offset", |f| write!(f, "{:#06X}", self.storage_offset));
+
+        let store = self.string_storage();
+
+        builder.field_with("name_records", |f| {
+            let mut list = f.debug_list();
+
+            for name in self.name_records() {
+                list.entry_with(|f| {
+                    f.debug_struct("NameRecordRepr")
+                        // TODO: Decode platform_id and encoding_id and display their names
+                        .field("platform_id", &name.platform_id.get())
+                        .field("encoding_id", &name.encoding_id.get())
+                        // TODO: Parse language_id as either a platform-specific id or a LangTag
+                        .field_with("language_id", |f| write!(f, "{:#06X}", name.language_id))
+                        // TODO: Parse name_id and display its name
+                        .field("name_id", &name.name_id.get())
+                        .field("length", &name.length.get())
+                        .field_with("string_offset", |f| write!(f, "{:#06X}", name.string_offset))
+                        .field("value", &name.string(store))
+                        .finish()
+                });
+            }
+
+            list.finish()
+        });
+
+        if self.version.get() != 0 {
+            builder.field("lang_tag_count", &self.lang_tag_count().get());
+
+            builder.field_with("lang_tag_records", |f| {
+                let mut list = f.debug_list();
+
+                for lang in self.lang_tag_records() {
+                    list.entry_with(|f| {
+                        f.debug_struct("LangTagRecordRepr")
+                            .field("length", &lang.length.get())
+                            .field_with("lang_tag_offset", |f| {
+                                write!(f, "{:#06X}", lang.lang_tag_offset)
+                            })
+                            .field("tag", &lang.tag(store))
+                            .finish()
+                    });
+                }
+
+                list.finish()
+            });
+        }
+
+        builder.finish()
     }
 }

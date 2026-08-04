@@ -1,7 +1,6 @@
 #![feature(const_trait_impl)]
 #![feature(const_result_trait_fn)]
 #![feature(const_option_ops)]
-#![feature(const_destruct)]
 #![feature(const_convert)]
 #![feature(const_default)]
 #![feature(const_clone)]

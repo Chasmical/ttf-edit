@@ -8,5 +8,10 @@ fn main() {
 
     let dir = unsafe { TableDirectoryRepr::new_unchecked(&font_data) };
 
-    println!("{:#?}", dir);
+    // println!("{:#?}", dir);
+
+    // println!("{:#?}", dir.head());
+    // println!("{:#?}", dir.hhea());
+    // println!("{:#?}", dir.maxp());
+    println!("{:#?}", dir.name());
 }
