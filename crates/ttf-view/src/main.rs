@@ -1,3 +1,12 @@
+use std::fs;
+use ttf_view::tables::TableDirectoryRepr;
+
 fn main() {
-    println!("Hello, world!");
+    let path = r#"D:\repos\flag-emojis-for-windows\build\Segoe.UI.Emoji.with.Twemoji.Flags.ttf"#;
+
+    let font_data = fs::read(path).unwrap();
+
+    let dir = unsafe { TableDirectoryRepr::new_unchecked(&font_data) };
+
+    println!("{:#?}", dir);
 }

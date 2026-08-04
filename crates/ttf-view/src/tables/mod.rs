@@ -2,6 +2,7 @@ use crate::{
     tables::cmap::CmapTableRepr,
     types::{Offset32, Tag, tags, uint16, uint32},
 };
+use std::fmt;
 
 pub mod cmap;
 
@@ -30,19 +31,18 @@ impl TableDirectoryRepr {
         unsafe { &*bytes.as_ptr().cast() }
     }
 
-    pub const fn tables(&self) -> &[TableRecordRepr] {
-        unsafe {
-            std::slice::from_raw_parts(self.table_records.as_ptr(), self.num_tables.get() as _)
-        }
+    pub const fn table_records(&self) -> &[TableRecordRepr] {
+        let len = self.num_tables.get() as usize;
+        unsafe { std::slice::from_raw_parts(self.table_records.as_ptr(), len) }
     }
 
     pub(crate) const unsafe fn find_table<T>(&self, tag: Tag) -> Option<&T> {
-        let tables = self.tables();
+        let tables = self.table_records();
         let mut idx = 0;
         while idx < tables.len() {
             let table = &tables[idx];
             if table.table_tag == tag {
-                return Some(unsafe { table.data_cast(self) });
+                return Some(unsafe { table.data_cast::<T>(self) });
             }
             idx += 1;
         }
@@ -63,5 +63,38 @@ impl TableRecordRepr {
     }
     pub const unsafe fn data_cast<'a, T>(&'a self, dir: &'a TableDirectoryRepr) -> &'a T {
         unsafe { &*dir.table_data.as_ptr().add(self.offset.get() as _).cast() }
+    }
+}
+
+impl fmt::Debug for TableDirectoryRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TableDirectoryRepr")
+            .field_with("sfnt_version", |f| write!(f, "{:#010X}", self.sfnt_version))
+            .field("num_tables", &self.num_tables.get())
+            .field("search_range", &self.search_range.get())
+            .field("entry_selector", &self.entry_selector.get())
+            .field("range_shift", &self.range_shift.get())
+            .field_with("table_records", |f| {
+                let mut list = f.debug_list();
+
+                for table in self.table_records() {
+                    list.entry_with(|f| {
+                        table.fmt(&mut f.with_options(*f.options().alternate(false)))
+                    });
+                }
+                list.finish()
+            })
+            .finish()
+    }
+}
+
+impl fmt::Debug for TableRecordRepr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TableRecordRepr")
+            .field("table_tag", &self.table_tag)
+            .field_with("checksum", |f| write!(f, "{:#010X}", self.checksum))
+            .field_with("offset", |f| write!(f, "{:#010X}", self.offset))
+            .field_with("length", |f| write!(f, "{:#010X}", self.length))
+            .finish()
     }
 }
