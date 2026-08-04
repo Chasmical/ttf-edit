@@ -1,6 +1,21 @@
 use crate::types::{Offset32, uint16};
 
+mod codepoint;
+mod glyph_id;
+
+pub use codepoint::*;
+pub use glyph_id::*;
+
 pub mod format0;
+// TODO: pub mod format2;
+// TODO: pub mod format4;
+// TODO: pub mod format6;
+// TODO: pub mod format8;
+
+// TODO: pub mod format10;
+// TODO: pub mod format12;
+// TODO: pub mod format13;
+// TODO: pub mod format14;
 
 #[repr(C)]
 pub struct CmapTableRepr {
@@ -44,9 +59,9 @@ impl CmapSubtableRepr {
 }
 
 pub trait CmapSubtable {
-    type Iter<'a>: Iterator<Item = (char, u32)>
+    type Iter<'a>: Iterator<Item = (Codepoint, GlyphId)>
     where Self: 'a;
-    fn glyph_id(&self, codepoint: char) -> Option<u32>;
-    fn codepoint(&self, glyph_id: u32) -> Option<char>;
+    fn glyph_id(&self, codepoint: Codepoint) -> Option<GlyphId>;
+    fn codepoint(&self, glyph_id: GlyphId) -> Option<Codepoint>;
     fn iter(&self) -> Self::Iter<'_>;
 }
