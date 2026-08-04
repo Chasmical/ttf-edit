@@ -93,3 +93,22 @@ pub struct Encoding {
     platform_id: PlatformId,
     encoding_id: [u8; 2],
 }
+
+impl Encoding {
+    pub(crate) const fn is_unicode(platform_id: uint16, encoding_id: uint16) -> bool {
+        let platform_id = PlatformId::new(platform_id.get());
+        let encoding_id = WindowsEncodingId::new(encoding_id.get());
+
+        matches!(
+            (platform_id, encoding_id),
+            (PlatformId::Unicode, _)
+                | (PlatformId::Windows, WindowsEncodingId::UnicodeBmp)
+                | (PlatformId::Windows, WindowsEncodingId::UnicodeFull)
+        )
+    }
+}
+
+// Note: will be used in Results as Err for various encoding errors.
+#[derive(Debug, Copy, Hash)]
+#[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EncodingError;
