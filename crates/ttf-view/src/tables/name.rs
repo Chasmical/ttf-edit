@@ -2,7 +2,6 @@ use crate::{
     tables::cmap::{Encoding, encodings::EncodingError},
     types::{Offset16, uint16},
 };
-use std::borrow::Cow;
 
 #[repr(C)]
 #[non_exhaustive]
@@ -87,14 +86,14 @@ impl NameRecordRepr {
     pub const fn bytes<'a>(&'a self, store: &'a StringStorage) -> &'a [u8] {
         unsafe { store.get(self.string_offset, self.length) }
     }
-    pub fn string<'a>(&'a self, store: &'a StringStorage) -> Result<Cow<'a, str>, EncodingError> {
+    pub fn string<'a>(&'a self, store: &'a StringStorage) -> Result<String, EncodingError> {
         let raw_bytes = self.bytes(store);
 
         if Encoding::is_unicode(self.platform_id, self.encoding_id) {
-            return Ok(String::from_utf8_lossy(raw_bytes));
+            return Ok(String::from_utf16be_lossy(raw_bytes));
         }
 
         // TODO: After the issue with encodings is resolved, use them to decode strings here.
-        unimplemented!()
+        Err(EncodingError)
     }
 }
