@@ -18,12 +18,13 @@ pub type Offset32 = uint32;
 mod longdatetime;
 mod tag;
 mod uint24mod;
+mod version16dot16;
 
 pub use longdatetime::*;
 pub use tag::*;
 pub use uint24mod::*;
+pub use version16dot16::*;
 
-// TODO: Version16Dot16
 // TODO: Fixed
 // TODO: F2DOT14
 
