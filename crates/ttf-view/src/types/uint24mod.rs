@@ -5,14 +5,6 @@ use crate::types::impl_fmt_from_getter;
 #[repr(transparent)]
 pub struct uint24([u8; 3]);
 
-// TODO: When [u8; 3]'s Default is constified, replace with #[derive_const]
-#[allow(clippy::derivable_impls)]
-const impl Default for uint24 {
-    fn default() -> Self {
-        Self([0; 3])
-    }
-}
-
 impl uint24 {
     pub const BITS: u32 = 24;
     pub const MIN: Self = Self::new(0x000000).unwrap();
@@ -30,15 +22,28 @@ impl uint24 {
     pub const fn from_be_bytes(bytes: [u8; 3]) -> Self {
         Self(bytes)
     }
+    pub const fn to_be_bytes(self) -> [u8; 3] {
+        self.0
+    }
 
     pub const fn get(&self) -> u32 {
         let mut buf = [0; 4];
-        buf.last_chunk_mut::<3>().unwrap().copy_from_slice(&self.0);
+        buf[1..].copy_from_slice(&self.0);
         u32::from_be_bytes(buf)
     }
 }
 
-impl_fmt_from_getter! { Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp for uint24 }
+impl_fmt_from_getter! {
+    Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp for uint24
+}
+
+// TODO: When [u8; 3]'s Default is constified, replace with #[derive_const]
+#[allow(clippy::derivable_impls)]
+const impl Default for uint24 {
+    fn default() -> Self {
+        Self([0; 3])
+    }
+}
 
 const impl PartialEq<u32> for uint24 {
     fn eq(&self, other: &u32) -> bool {
@@ -55,11 +60,6 @@ const impl std::str::FromStr for uint24 {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         u32::from_str(s).or(Err(())).and_then(Self::try_from)
-    }
-}
-const impl From<u16> for uint24 {
-    fn from(value: u16) -> Self {
-        Self::new(value as u32).unwrap()
     }
 }
 const impl TryFrom<u32> for uint24 {

@@ -5,7 +5,7 @@ use std::fmt;
 #[repr(transparent)]
 pub struct Tag([TagByte; 4]);
 
-// TODO: Replace TagByte with a pattern type, once they're stabilized and constified:
+// TODO: When pattern types are stabilized and constified, replace TagByte with a pattern type:
 // type TagByte = u8 is 0x20 ..= 0x7E;
 
 #[rustfmt::skip]
@@ -27,30 +27,27 @@ enum TagByte {
     LeftCurlyBracket, VerticalLine, RightCurlyBracket, Tilde, // 0x20 ..= 0x7E
 }
 
-#[derive(Copy, Hash)]
-#[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug)]
+#[derive_const(Clone, PartialEq, Eq)]
 pub enum ParseTagError {
     InvalidBytes,
     InvalidLength,
 }
 
 impl Tag {
-    pub const fn from_raw(bytes: [u8; 4]) -> Result<Self, ParseTagError> {
+    pub const fn from_bytes(bytes: [u8; 4]) -> Result<Self, ParseTagError> {
         if matches!(bytes, [0x20..=0x7E, 0x20..=0x7E, 0x20..=0x7E, 0x20..=0x7E]) {
             Ok(Self(unsafe { std::mem::transmute::<[u8; 4], [TagByte; 4]>(bytes) }))
         } else {
             Err(ParseTagError::InvalidBytes)
         }
     }
-    pub const fn from_bytes(bytes: &[u8]) -> Result<Self, ParseTagError> {
-        Self::from_raw(match *bytes {
+    pub const fn from_str(s: &str) -> Result<Self, ParseTagError> {
+        Self::from_bytes(match *s.as_bytes() {
             [a, b, c, d] => [a, b, c, d],
             [a, b, c] => [a, b, c, b' '],
             _ => return Err(ParseTagError::InvalidLength),
         })
-    }
-    pub const fn from_str(s: &str) -> Result<Self, ParseTagError> {
-        Self::from_bytes(s.as_bytes())
     }
 
     pub const fn to_bytes(self) -> [u8; 4] {
@@ -90,7 +87,9 @@ define_known_tags! {
 
 impl fmt::Debug for Tag {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.as_str().fmt(f)
+        let mut buf = [b'\'', 0, 0, 0, 0, b'\''];
+        buf[1..5].copy_from_slice(self.as_bytes());
+        f.write_str(unsafe { str::from_utf8_unchecked(&buf) })
     }
 }
 impl fmt::Display for Tag {
@@ -104,16 +103,6 @@ const impl PartialEq<str> for Tag {
         self.as_str() == other
     }
 }
-const impl PartialEq<[u8; 4]> for Tag {
-    fn eq(&self, other: &[u8; 4]) -> bool {
-        self.as_bytes() == other
-    }
-}
-const impl PartialEq<[u8]> for Tag {
-    fn eq(&self, other: &[u8]) -> bool {
-        self.as_bytes() == other
-    }
-}
 
 const impl std::str::FromStr for Tag {
     type Err = ParseTagError;
@@ -125,18 +114,6 @@ const impl TryFrom<&str> for Tag {
     type Error = ParseTagError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::from_str(value)
-    }
-}
-const impl TryFrom<[u8; 4]> for Tag {
-    type Error = ParseTagError;
-    fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        Self::from_raw(value)
-    }
-}
-const impl TryFrom<&[u8]> for Tag {
-    type Error = ParseTagError;
-    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Self::from_bytes(value)
     }
 }
 const impl AsRef<str> for Tag {

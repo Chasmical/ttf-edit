@@ -26,6 +26,7 @@ macro_rules! impl_fixed_point_number {
 
             pub const fn new(num: $fp) -> Option<Self> {
                 if matches!(num, Self::MIN..Self::MAX) {
+                    // TODO: Could this sometimes result in overflow? e.g. 1.999999 wrapping to -2?
                     Some(unsafe { Self::new_unchecked(num) })
                 } else {
                     None
@@ -42,15 +43,12 @@ macro_rules! impl_fixed_point_number {
             pub const fn to_be_bytes(self) -> [u8; $bytes] {
                 self.0
             }
-            pub const fn as_be_bytes(&self) -> &[u8; $bytes] {
-                &self.0
-            }
 
-            pub const fn to_frac_num(&self) -> $int {
+            pub const fn frac_num(&self) -> $int {
                 <$int>::from_be_bytes(self.0)
             }
             pub const fn get(&self) -> $fp {
-                self.to_frac_num() as $fp * Self::STEP
+                self.frac_num() as $fp * Self::STEP
             }
         }
 
@@ -63,7 +61,7 @@ macro_rules! impl_fixed_point_number {
         }
         const impl Ord for $Name {
             fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-                self.to_frac_num().cmp(&other.to_frac_num())
+                self.frac_num().cmp(&other.frac_num())
             }
         }
 
@@ -88,6 +86,11 @@ macro_rules! impl_fixed_point_number {
             type Error = ();
             fn try_from(value: $fp) -> Result<$Name, Self::Error> {
                 Self::new(value).ok_or(())
+            }
+        }
+        const impl From<$Name> for $fp {
+            fn from(value: $Name) -> Self {
+                value.get()
             }
         }
     }
@@ -122,7 +125,7 @@ mod tests {
         ];
 
         for (raw, fp) in nums {
-            let real = Fixed::new(fp).unwrap().to_frac_num() as u32;
+            let real = Fixed::new(fp).unwrap().frac_num() as u32;
             assert_eq!(real, raw, "{real:#X} != {raw:#X} ({fp})");
 
             let real = Fixed::new(fp).unwrap().get();
@@ -147,7 +150,7 @@ mod tests {
         ];
 
         for (raw, fp) in nums {
-            let real = F2DOT14::new(fp).unwrap().to_frac_num() as u16;
+            let real = F2DOT14::new(fp).unwrap().frac_num() as u16;
             assert_eq!(real, raw, "{real:#X} != {raw:#X} ({fp})");
 
             let real = F2DOT14::new(fp).unwrap().get();

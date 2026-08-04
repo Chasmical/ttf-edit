@@ -4,8 +4,9 @@
 #![feature(const_convert)]
 #![feature(const_default)]
 #![feature(const_clone)]
-#![feature(const_try)]
+#![feature(const_index)]
 #![feature(const_cmp)]
+#![feature(const_try)]
 #![feature(derive_const)]
 #![feature(try_trait_v2)]
 #![allow(clippy::missing_safety_doc)] // TODO: remove when adding docs
