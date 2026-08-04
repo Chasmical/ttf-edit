@@ -30,10 +30,12 @@ impl CmapSubtableFormat2Repr {
         let offset = self.sub_header_keys[high_byte as usize].get();
         unsafe { &*self.sub_headers.as_ptr().byte_add(offset as usize) }
     }
+    pub const fn sub_header_zero(&self) -> &SubHeaderRepr {
+        unsafe { &*self.sub_headers.as_ptr() }
+    }
 
     pub const fn map_one(&self, single_byte: u8) -> GlyphId {
-        let sub_header_zero = unsafe { &*self.sub_headers.as_ptr() };
-        sub_header_zero.map(single_byte)
+        self.sub_header_zero().map(single_byte)
     }
     pub const fn map_two(&self, high_byte: u8, low_byte: u8) -> GlyphId {
         self.sub_header(high_byte).map(low_byte)

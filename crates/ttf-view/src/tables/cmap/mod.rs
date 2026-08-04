@@ -7,6 +7,11 @@ mod glyph_id;
 pub use codepoint::*;
 pub use glyph_id::*;
 
+pub mod encodings;
+pub use encodings::{
+    Encoding, IsoEncodingId, MacintoshEncodingId, PlatformId, UnicodeEncodingId, WindowsEncodingId,
+};
+
 pub mod format0;
 pub mod format2;
 pub mod format4;
