@@ -8,16 +8,17 @@ pub use glyph_id::*;
 
 pub mod format0;
 pub mod format2;
-// TODO: pub mod format4;
-// TODO: pub mod format6;
-// TODO: pub mod format8;
+pub mod format4;
+pub mod format6;
+pub mod format8;
 
-// TODO: pub mod format10;
-// TODO: pub mod format12;
-// TODO: pub mod format13;
-// TODO: pub mod format14;
+pub mod format10;
+pub mod format12;
+pub mod format13;
+pub mod format14;
 
 #[repr(C)]
+#[non_exhaustive]
 pub struct CmapTableRepr {
     pub version: uint16,
     pub num_tables: uint16,
