@@ -49,7 +49,6 @@ impl EncodingRecordRepr {
 #[repr(C)]
 #[non_exhaustive]
 pub struct CmapSubtableRepr {
-    pub format: uint16,
     meta: SubtableMeta,
 }
 
@@ -83,6 +82,7 @@ union SubtableMeta {
 #[repr(C)]
 #[non_exhaustive]
 struct ShortMeta {
+    format: uint16,
     length: uint16,
     language: uint16,
     data: [u8; 0],
@@ -90,6 +90,7 @@ struct ShortMeta {
 #[repr(C)]
 #[non_exhaustive]
 struct LongMeta {
+    format: uint16,
     reserved: uint16,
     length: uint32,
     language: uint32,
@@ -98,13 +99,17 @@ struct LongMeta {
 #[repr(C)]
 #[non_exhaustive]
 struct LenOnlyMeta {
+    format: uint16,
     length: uint32,
     data: [u8; 0],
 }
 
 impl CmapSubtableRepr {
+    pub const fn format(&self) -> u16 {
+        unsafe { self.meta.short.format.get() }
+    }
     pub const fn length(&self) -> Option<u32> {
-        Some(match self.format.get() {
+        Some(match self.format() {
             0 | 2 | 4 | 6 => unsafe { self.meta.short.length.get() as _ },
             8 | 10 | 12 | 13 => unsafe { self.meta.long.length.get() },
             14 => unsafe { self.meta.len_only.length.get() },
@@ -112,14 +117,14 @@ impl CmapSubtableRepr {
         })
     }
     pub const fn language(&self) -> Option<u32> {
-        Some(match self.format.get() {
+        Some(match self.format() {
             0 | 2 | 4 | 6 => unsafe { self.meta.short.language.get() as _ },
             8 | 10 | 12 | 13 => unsafe { self.meta.long.language.get() },
             _ => return None,
         })
     }
     pub const fn data_ptr(&self) -> Option<&u8> {
-        Some(match self.format.get() {
+        Some(match self.format() {
             0 | 2 | 4 | 6 => unsafe { &*self.meta.short.data.as_ptr() },
             8 | 10 | 12 | 13 => unsafe { &*self.meta.long.data.as_ptr() },
             14 => unsafe { &*self.meta.len_only.data.as_ptr() },
@@ -127,12 +132,21 @@ impl CmapSubtableRepr {
         })
     }
     pub const fn data(&self) -> Option<&[u8]> {
-        let (start, len) = match self.format.get() {
-            0 | 2 | 4 | 6 => unsafe { (&self.meta.short.data, self.meta.short.length.get() as _) },
-            8 | 10 | 12 | 13 => unsafe { (&self.meta.long.data, self.meta.long.length.get()) },
-            14 => unsafe { (&self.meta.len_only.data, self.meta.len_only.length.get()) },
+        let (start, size) = match self.format() {
+            0 | 2 | 4 | 6 => unsafe {
+                let size = self.meta.short.length.get() as u32 - size_of::<ShortMeta>() as u32;
+                (&self.meta.short.data, size)
+            },
+            8 | 10 | 12 | 13 => unsafe {
+                let size = self.meta.long.length.get() - size_of::<LongMeta>() as u32;
+                (&self.meta.long.data, size)
+            },
+            14 => unsafe {
+                let size = self.meta.len_only.length.get() - size_of::<LenOnlyMeta>() as u32;
+                (&self.meta.len_only.data, size)
+            },
             _ => return None,
         };
-        Some(unsafe { std::slice::from_raw_parts(start.as_ptr(), len as _) })
+        Some(unsafe { std::slice::from_raw_parts(start.as_ptr(), size as _) })
     }
 }
