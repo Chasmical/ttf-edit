@@ -29,23 +29,23 @@ impl_fmt_from_getter! {
 }
 
 // Conversions from std integer types to GlyphId
-impl From<u8> for GlyphId {
+const impl From<u8> for GlyphId {
     fn from(value: u8) -> Self {
         Self::new(value as u16)
     }
 }
-impl From<u16> for GlyphId {
+const impl From<u16> for GlyphId {
     fn from(value: u16) -> Self {
         Self::new(value)
     }
 }
-impl TryFrom<u32> for GlyphId {
+const impl TryFrom<u32> for GlyphId {
     type Error = ();
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         Ok(Self::new(value.try_into().or(Err(()))?))
     }
 }
-impl TryFrom<usize> for GlyphId {
+const impl TryFrom<usize> for GlyphId {
     type Error = ();
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         Ok(Self::new(value.try_into().or(Err(()))?))
@@ -53,23 +53,23 @@ impl TryFrom<usize> for GlyphId {
 }
 
 // Conversions from GlyphId to std integer types
-impl TryFrom<GlyphId> for u8 {
+const impl TryFrom<GlyphId> for u8 {
     type Error = ();
     fn try_from(value: GlyphId) -> Result<Self, Self::Error> {
         value.get().try_into().or(Err(()))
     }
 }
-impl From<GlyphId> for u16 {
+const impl From<GlyphId> for u16 {
     fn from(value: GlyphId) -> Self {
         value.get()
     }
 }
-impl From<GlyphId> for u32 {
+const impl From<GlyphId> for u32 {
     fn from(value: GlyphId) -> Self {
         value.get() as u32
     }
 }
-impl From<GlyphId> for usize {
+const impl From<GlyphId> for usize {
     fn from(value: GlyphId) -> Self {
         value.get() as usize
     }
