@@ -1,4 +1,4 @@
-use crate::types::impl_fmt_from_getter;
+use std::fmt;
 
 macro_rules! impl_fixed_point_number {
     (
@@ -44,6 +44,17 @@ macro_rules! impl_fixed_point_number {
                 self.0
             }
 
+            // Determine how many decimal places the type can accurately represent
+            pub const PRECISION: u32 = {
+                let mut x = Self::STEP;
+                let mut times = 0;
+                while x.round() < 1 as $fp {
+                    times += 1;
+                    x *= 10 as $fp;
+                }
+                times - 1
+            };
+
             pub const fn frac_num(&self) -> $int {
                 <$int>::from_be_bytes(self.0)
             }
@@ -52,7 +63,22 @@ macro_rules! impl_fixed_point_number {
             }
         }
 
-        impl_fmt_from_getter! { Debug, Display, LowerExp, UpperExp for $Name }
+        impl fmt::Debug for $Name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fmt::Display::fmt(self, f)
+            }
+        }
+        impl fmt::Display for $Name {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                let mut val = self.get();
+
+                if f.precision().is_none() {
+                    const MULT: $fp = 10u32.pow($Name::PRECISION) as $fp;
+                    val = (val * MULT).round() / MULT;
+                }
+                val.fmt(f)
+            }
+        }
 
         const impl PartialOrd for $Name {
             fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -124,6 +150,8 @@ mod tests {
             (0x8000_0000, -32768.000000),
         ];
 
+        assert_eq!(Fixed::PRECISION, 4);
+
         for (raw, fp) in nums {
             let real = Fixed::new(fp).unwrap().frac_num() as u32;
             assert_eq!(real, raw, "{real:#X} != {raw:#X} ({fp})");
@@ -148,6 +176,8 @@ mod tests {
             (0xFF7B, -0.008118),
             (0x8000, -2.000000),
         ];
+
+        assert_eq!(F2DOT14::PRECISION, 3);
 
         for (raw, fp) in nums {
             let real = F2DOT14::new(fp).unwrap().frac_num() as u16;
