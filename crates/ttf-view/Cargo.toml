@@ -12,4 +12,9 @@ readme = "../../README.md"
 
 [dependencies]
 chrono = "0.4.45"
+encoding_rs = { version = "0.8.35", optional = true }
 zerocopy = "0.8.55"
+
+[features]
+default = ["non-standard-encodings"]
+non-standard-encodings = ["dep:encoding_rs"]

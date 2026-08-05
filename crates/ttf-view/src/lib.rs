@@ -11,7 +11,9 @@
 #![feature(try_trait_v2)]
 #![feature(debug_closure_helpers)]
 #![feature(formatting_options)]
+#![feature(bstr)]
 #![allow(clippy::missing_safety_doc)] // TODO: remove when adding docs
 
+pub mod encodings;
 pub mod tables;
 pub mod types;
