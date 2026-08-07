@@ -1,8 +1,7 @@
-use clap::{CommandFactory, FromArgMatches, Parser, ValueEnum, error::ErrorKind};
+use color_print::{ceprint, cstr};
 use std::{
     fmt::Debug,
     io::{Write, stdout},
-    path::PathBuf,
     process,
 };
 use ttf_view::{
@@ -10,105 +9,123 @@ use ttf_view::{
     types::{Tag, tags},
 };
 
-const ABOUT: &'static str = r#"
-A TrueType/OpenType font parsing/viewing Rust library, and also a CLI tool.
-The project's GitHub repository: https://github.com/Chasmical/ttf-edit
-"#
-.trim_ascii();
-
-#[derive(Debug, Parser)]
-#[command(name = "ttf-view", version, about = ABOUT, arg_required_else_help = true)]
-struct Args {
-    /// Path to the OpenType font file to view (.ttf, .otf)
-    #[arg(name = "FONT")]
-    font_path: PathBuf,
-
-    /// The format to dump the table data in
-    #[arg(short, long, value_enum, default_value_t)]
-    format: DumpFormat,
-    /// The table to dump (omit to dump the table directory)
-    #[arg(short, long = "table", name = "TAG")]
-    table_tag: Option<Tag>,
-
-    /// List all supported OpenType tables (bin format always works)
-    #[arg(long)]
-    list_tables: bool,
+enum Action {
+    Help,
+    Version,
+    ListTables,
+    Dump,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Format {
+    Debug,
+    Binary,
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, ValueEnum)]
-enum DumpFormat {
-    #[default]
-    #[value(alias("dbg"))]
-    Debug,
-    #[value(alias("binary"))]
-    Bin,
-    // TODO: Add json and xml formats, via serde
-    // TODO: Add ttx format (that works with fonttools ttx)
+macro_rules! error_exit {
+    ($($arg:tt)*) => {{
+        ceprint!("<r>error</>: ");
+        eprintln!($($arg)*);
+        process::exit(1);
+    }};
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args_os: Vec<_> = std::env::args_os().collect();
+    let mut font_path = None;
+    let mut action = Action::Help;
+    let mut format = Format::Debug;
+    let mut table_tag = None;
 
-    // Intercept "--list-tables" here, since clap demands that <FONT> is present,
-    // and I don't want the path to the font to be displayed as [FONT] in help.
-    if args_os.iter().any(|x| x == "--list-tables") {
-        let supported_tables = [
-            // (tags::cmap, "Character to Glyph Index Mapping Table"),
-            (tags::head, "Font Header Table"),
-            (tags::hhea, "Horizontal Header Table"),
-            // (tags::hmtx, "Horizontal Metrics Table"),
-            (tags::hmtx, "Horizontal Metrics Table"),
-            (tags::maxp, "Maximum Profile"),
-            (tags::name, "Naming Table"),
-        ];
-        // TODO: Figure out what formats the tables support via TypeId
+    let mut args = std::env::args();
+    args.next(); // skip executable
 
-        println!(
-            "Currently only the following {} OpenType tables can be exported in `debug` format:\n",
-            supported_tables.len(),
-        );
-
-        for (tag, name) in supported_tables {
-            println!("* {:.6} - {}", tag, name);
-        }
-
-        println!("\nNote: `bin` format is always available for any tables.");
-        return Ok(());
-    }
-
-    let mut command = Args::command();
-
-    let args = match command.try_get_matches_from_mut(args_os) {
-        Ok(mut matches) => match Args::from_arg_matches_mut(&mut matches) {
-            Ok(args) => args,
-            Err(err) => err.exit(),
-        },
-        Err(err) => err.exit(),
-    };
-    if &args.font_path == "help" {
-        command.print_help().unwrap();
-        return Ok(());
-    }
-
-    let Args { font_path, format, table_tag, .. } = args;
-
-    let font_data = std::fs::read(font_path).unwrap();
-    let dir = unsafe { TableDirectoryRepr::new_unchecked(&font_data) };
-
-    if format == DumpFormat::Bin {
-        let data = match table_tag {
-            Some(tag) => dir.table_record(tag).map_or_default(|t| t.data(dir)),
-            None => {
-                let dir_size = size_of::<TableDirectoryRepr>()
-                    + dir.table_records().len() * size_of::<TableRecordRepr>();
-                &font_data[..dir_size]
+    while let Some(arg) = args.next() {
+        match &*arg {
+            "-h" | "--help" => {
+                action = Action::Help;
+            },
+            "-V" | "--version" => {
+                action = Action::Version;
+            },
+            "--list-tables" => {
+                action = Action::ListTables;
+            },
+            "-f" | "--format" => {
+                match args.next() {
+                    Some(arg) => match &*arg {
+                        "dbg" | "debug" => format = Format::Debug,
+                        "bin" | "binary" => format = Format::Binary,
+                        format => error_exit!("Got an unknown format identifier '{format}'"),
+                    },
+                    None => error_exit!("Expected a format identifier after '-f'/'--format'"),
+                };
+            },
+            "-t" | "--table" => {
+                match args.next() {
+                    Some(arg) => match Tag::from_str(&arg) {
+                        Ok(tag) => table_tag = Some(tag),
+                        Err(tag_error) => error_exit!("Got an invalid table tag ({tag_error})"),
+                    },
+                    None => error_exit!("Expected a table tag after '-t'/'--table'"),
+                };
+            },
+            thing => {
+                if let Some(x) = font_path {
+                    error_exit!("Got more than one path in arguments ('{}', '{}')", &x, thing);
+                }
+                font_path = Some(thing.to_owned());
+                action = Action::Dump;
             },
         };
-        stdout().write_all(data).unwrap();
-        return Ok(());
     }
 
-    let table: &dyn Debug = match table_tag {
+    match action {
+        Action::Version => {
+            print_version();
+            process::exit(0);
+        },
+        Action::Help => {
+            print_help();
+            process::exit(0);
+        },
+        Action::ListTables => {
+            print_tables();
+            process::exit(0);
+        },
+        Action::Dump => {
+            let Some(font_path) = font_path else { error_exit!("The font file was not specified") };
+
+            let font_data = std::fs::read(font_path).unwrap();
+            let dir = unsafe { TableDirectoryRepr::new_unchecked(&font_data) };
+
+            match format {
+                Format::Binary => {
+                    let data = dump_binary(&font_data, dir, table_tag);
+                    stdout().write_all(data).unwrap();
+                    return Ok(());
+                },
+                Format::Debug => {
+                    println!("{:#?}", dump_debug(dir, table_tag));
+                },
+            };
+        },
+    };
+
+    Ok(())
+}
+
+fn dump_binary<'a>(data: &'a Vec<u8>, dir: &'a TableDirectoryRepr, tag: Option<Tag>) -> &'a [u8] {
+    match tag {
+        Some(tag) => dir.table_record(tag).map_or_default(|t| t.data(dir)),
+        None => {
+            let dir_size = size_of::<TableDirectoryRepr>()
+                + dir.table_records().len() * size_of::<TableRecordRepr>();
+            &data[..dir_size]
+        },
+    }
+}
+
+fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>) -> &dyn Debug {
+    match tag {
         None => dir,
 
         // Some(tags::cmap) => dir.cmap(),
@@ -119,20 +136,60 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(tags::name) => dir.name(),
 
         Some(table_tag @ _) => {
-            let msg = if Tag::KNOWN_TAGS.contains(&table_tag) {
-                format!("Dumping the table '{}' is not supported yet", table_tag)
+            if Tag::KNOWN_TAGS.contains(&table_tag) {
+                error_exit!("error: Dumping the table '{table_tag}' is not supported yet")
             } else {
-                format!("Unknown table tag '{}'", table_tag)
-            };
-            command.error(ErrorKind::InvalidValue, msg).print().unwrap();
-            process::exit(1);
+                error_exit!("error: Could not find a table with tag '{table_tag}'")
+            }
         },
-    };
+    }
+}
 
-    match format {
-        DumpFormat::Bin => unreachable!(), // was handled earlier
-        DumpFormat::Debug => println!("{:#?}", table),
-    };
+fn print_version() {
+    println!("ttf-view {}", env!("CARGO_PKG_VERSION"));
+}
 
-    Ok(())
+fn print_help() {
+    const HELP: &'static str = cstr!(r#"
+
+A TrueType/OpenType font parsing/viewing Rust library, and also a CLI tool.
+The project's GitHub repository: https://github.com/Chasmical/ttf-edit
+
+<s><u>Usage:</u> ttf-view</s> [OPTIONS] <<FONT>>
+
+<s,u>Arguments:</>
+  <<FONT>>  Path to the OpenType font file to view (.ttf, .otf)
+
+<s,u>Options:</>
+  <s>-f, --format</> <<FORMAT>>  The format to dump the table data in (possible values: dbg/debug, bin/binary)
+  <s>-t, --table</> <<TAG>>      The table to dump (omit to dump the table directory)
+  <s>    --list-tables</>      List all supported OpenType tables (binary format always works)
+  <s>-h, --help</>             Print help
+  <s>-V, --version</>          Print version
+
+"#).trim_ascii();
+
+    eprintln!("{}", HELP);
+}
+
+fn print_tables() {
+    const TABLES: &'static str = cstr!(
+        r#"
+
+Currently only the following OpenType tables can be exported:
+
+<s>cmap</>  Character Mapping Table   bin
+<s>head</>  Font Header Table         bin,dbg
+<s>hhea</>  Horizontal Header Table   bin,dbg
+<s>hmtx</>  Horizontal Metrics Table  bin
+<s>maxp</>  Maximum Profile           bin,dbg
+<s>name</>  Naming Table              bin,dbg
+
+Note: <s>bin</> format is always available for any tables.
+
+"#
+    )
+    .trim_ascii();
+
+    eprintln!("{}", TABLES);
 }

@@ -12,7 +12,7 @@ readme = "../../README.md"
 
 [dependencies]
 chrono = "0.4.45"
-clap = { version = "4.6.6", features = ["derive"], optional = true }
+color-print = { version = "0.3.7", optional = true }
 encoding_rs = { version = "0.8.35", optional = true }
 thiserror = "2.0.19"
 zerocopy = "0.8.55"
@@ -22,9 +22,8 @@ default = ["non-standard-encodings"]
 non-standard-encodings = ["dep:encoding_rs"]
 
 # Feature to enable ttf-view CLI app's dependencies
-cli = ["dep:clap"]
+cli = ["dep:color-print"]
 
 [[bin]]
 name = "ttf-view"
 required-features = ["cli"]
-
