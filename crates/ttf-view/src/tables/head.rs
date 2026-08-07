@@ -25,7 +25,7 @@ pub struct HeadTableRepr {
 
 impl fmt::Debug for HeadTableRepr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("HeadTableRepr")
+        f.debug_struct("HeadTable")
             .field("major_version", &self.major_version.get())
             .field("minor_version", &self.minor_version.get())
             .field("font_revision", &self.font_revision)

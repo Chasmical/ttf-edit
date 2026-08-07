@@ -113,7 +113,7 @@ impl_table_trait! {
 
 impl fmt::Debug for TableDirectoryRepr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TableDirectoryRepr")
+        f.debug_struct("TableDirectory")
             .field_with("sfnt_version", |f| write!(f, "{:#010X}", self.sfnt_version))
             .field("num_tables", &self.num_tables.get())
             .field("search_range", &self.search_range.get())
@@ -135,7 +135,7 @@ impl fmt::Debug for TableDirectoryRepr {
 
 impl fmt::Debug for TableRecordRepr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TableRecordRepr")
+        f.debug_struct("TableRecord")
             .field("table_tag", &self.table_tag)
             .field_with("checksum", |f| write!(f, "{:#010X}", self.checksum))
             .field_with("offset", |f| write!(f, "{:#010X}", self.offset))

@@ -20,15 +20,15 @@ cargo install ttf-view -F cli
 A TrueType/OpenType font parsing/viewing Rust library, and also a CLI tool.
 The project's GitHub repository: https://github.com/Chasmical/ttf-edit
 
-Usage: ttf-view.exe [OPTIONS] <FONT>
+Usage: ttf-view [OPTIONS] <FONT>
 
 Arguments:
   <FONT>  Path to the OpenType font file to view (.ttf, .otf)
 
 Options:
-  -f, --format <FORMAT>  The format to dump the table data in [default: debug] [possible values: debug, bin]
+  -f, --format <FORMAT>  The format to dump the table data in (possible values: dbg/debug, bin/binary)
   -t, --table <TAG>      The table to dump (omit to dump the table directory)
-      --list-tables      List all supported OpenType tables (bin format always works)
+      --list-tables      List all supported OpenType tables (binary format always works)
   -h, --help             Print help
   -V, --version          Print version
 ```
@@ -36,7 +36,7 @@ Options:
 ```
 > ttf-view test.ttf
 
-TableDirectoryRepr {
+TableDirectory {
     sfnt_version: 0x00010000,
     num_tables: 21,
     search_range: 256,
@@ -71,7 +71,7 @@ TableDirectoryRepr {
 ```
 > ttf-view test.ttf -t head
 
-HeadTableRepr {
+HeadTable {
     major_version: 1,
     minor_version: 0,
     font_revision: 1.6,

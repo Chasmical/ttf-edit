@@ -98,7 +98,7 @@ impl fmt::Debug for NameTableRepr {
         let storage = self.string_storage();
         let lang_tags = self.lang_tag_records();
 
-        let mut builder = f.debug_struct("NameTableRepr");
+        let mut builder = f.debug_struct("NameTable");
 
         builder
             .field("version", &self.version.get())
@@ -137,7 +137,7 @@ impl<'a> fmt::Debug for NameRecordDebug<'a> {
 
         let value = name.string(storage).map_err(|_| ByteStr::new(name.bytes(storage)));
 
-        f.debug_struct("NameRecordRepr")
+        f.debug_struct("NameRecord")
             .field("platform_id", &enc.platform_id())
             .field_with("encoding_id", |f| write!(f, "{} ({})", name.encoding_id.get(), enc_name))
             // TODO: Parse language_id as either a platform-specific id or a LangTag
@@ -158,7 +158,7 @@ impl<'a> fmt::Debug for LangTagRecordDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Self(lang, storage) = self;
 
-        f.debug_struct("LangTagRecordRepr")
+        f.debug_struct("LangTagRecord")
             .field("length", &lang.length.get())
             .field_with("lang_tag_offset", |f| write!(f, "{:#06X}", lang.lang_tag_offset))
             .field_with("tag", |f| {
