@@ -73,12 +73,16 @@ pub struct Encoding {
     encoding_id: u16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 #[derive_const(Clone, PartialEq, Eq)]
 pub enum EncodingError {
+    #[error("unknown platform id")]
     UnknownPlatform,
+    #[error("unknown encoding id")]
     UnknownEncoding,
+    #[error("string data could not be decoded")]
     MalformedString,
+    #[error("this encoding is not implemented")]
     Unimplemented,
 }
 

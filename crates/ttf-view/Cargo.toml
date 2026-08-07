@@ -13,6 +13,7 @@ readme = "../../README.md"
 [dependencies]
 chrono = "0.4.45"
 encoding_rs = { version = "0.8.35", optional = true }
+thiserror = "2.0.19"
 zerocopy = "0.8.55"
 
 [features]

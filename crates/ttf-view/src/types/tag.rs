@@ -27,10 +27,12 @@ enum TagByte {
     LeftCurlyBracket, VerticalLine, RightCurlyBracket, Tilde, // 0x20 ..= 0x7E
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 #[derive_const(Clone, PartialEq, Eq)]
 pub enum ParseTagError {
+    #[error("bytes not matching 0x20..=0x7E range")]
     InvalidBytes,
+    #[error("tag length is not 3 or 4")]
     InvalidLength,
 }
 
