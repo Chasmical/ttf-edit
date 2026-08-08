@@ -1,6 +1,6 @@
 use color_print::{ceprint, cstr};
 use std::{
-    fmt::Debug,
+    fmt::{self, Debug, Formatter},
     io::{Write, stdout},
     process,
 };
@@ -23,7 +23,7 @@ enum Format {
 
 macro_rules! error_exit {
     ($($arg:tt)*) => {{
-        ceprint!("<r>error</>: ");
+        ceprint!("<s,r!>error</>: ");
         eprintln!($($arg)*);
         process::exit(1);
     }};
@@ -101,10 +101,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Format::Binary => {
                     let data = dump_binary(&font_data, dir, table_tag);
                     stdout().write_all(data).unwrap();
-                    return Ok(());
                 },
                 Format::Debug => {
-                    println!("{:#?}", dump_debug(dir, table_tag));
+                    let dump = fmt::from_fn(|f| dump_debug(dir, table_tag, f));
+                    println!("{:#?}", dump);
                 },
             };
         },
@@ -124,14 +124,14 @@ fn dump_binary<'a>(data: &'a Vec<u8>, dir: &'a TableDirectoryRepr, tag: Option<T
     }
 }
 
-fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>) -> &dyn Debug {
-    match tag {
+fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>, f: &mut Formatter) -> fmt::Result {
+    let debug: &dyn Debug = match tag {
         None => dir,
 
         // Some(tags::cmap) => dir.cmap(),
         Some(tags::head) => dir.head(),
         Some(tags::hhea) => dir.hhea(),
-        // Some(tags::hmtx) => dir.hmtx(),
+        Some(tags::hmtx) => &dir.hmtx(),
         Some(tags::maxp) => dir.maxp(),
         Some(tags::name) => dir.name(),
 
@@ -142,7 +142,8 @@ fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>) -> &dyn Debug {
                 error_exit!("error: Could not find a table with tag '{table_tag}'")
             }
         },
-    }
+    };
+    debug.fmt(f)
 }
 
 fn print_version() {
@@ -181,7 +182,7 @@ Currently only the following OpenType tables can be exported:
 <s>cmap</>  Character Mapping Table   bin
 <s>head</>  Font Header Table         bin,dbg
 <s>hhea</>  Horizontal Header Table   bin,dbg
-<s>hmtx</>  Horizontal Metrics Table  bin
+<s>hmtx</>  Horizontal Metrics Table  bin,dbg
 <s>maxp</>  Maximum Profile           bin,dbg
 <s>name</>  Naming Table              bin,dbg
 

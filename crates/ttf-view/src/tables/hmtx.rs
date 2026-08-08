@@ -2,7 +2,7 @@ use crate::{
     tables::{TableDirectoryRepr, cmap::GlyphId},
     types::{FWORD, UFWORD, int16},
 };
-use std::iter::FusedIterator;
+use std::{fmt, iter::FusedIterator};
 
 #[repr(C)]
 #[non_exhaustive]
@@ -29,7 +29,7 @@ pub struct HmtxTableHandle<'a> {
     num_h_metrics: usize,
 }
 
-#[derive(Copy, Hash)]
+#[derive(Debug, Copy, Hash)]
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LongHorMetric {
     pub advance_width: u16,
@@ -233,3 +233,41 @@ impl<'a> ExactSizeIterator for Iter<'a> {
     }
 }
 impl<'a> FusedIterator for Iter<'a> {}
+
+impl<'a> fmt::Debug for HmtxTableHandle<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("HmtxTable")
+            .field("number_of_h_metrics", &self.num_h_metrics())
+            .field("num_glyphs", &self.num_glyphs())
+            .field_with("aws_lsbs", |f| {
+                let mut f = f.with_options(*f.options().alternate(false));
+
+                let mut builder = f.debug_map();
+                let last = self.num_glyphs() - 1;
+                for (glyph, metric) in self.iter() {
+                    struct GlyphWrapper(GlyphId);
+                    struct EntryWrapper(LongHorMetric, bool);
+
+                    impl fmt::Debug for GlyphWrapper {
+                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            if self.0.get().is_multiple_of(8) {
+                                f.write_str("\n    ")?;
+                            }
+                            self.0.fmt(f)
+                        }
+                    }
+                    impl fmt::Debug for EntryWrapper {
+                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                            (self.0.advance_width, self.0.lsb).fmt(f)?;
+                            if self.1 { f.write_str("\n") } else { Ok(()) }
+                        }
+                    }
+
+                    builder.entry(&GlyphWrapper(glyph), &EntryWrapper(metric, glyph.get() == last));
+                }
+
+                builder.finish()
+            })
+            .finish()
+    }
+}
