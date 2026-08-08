@@ -49,9 +49,15 @@ impl SubHeaderRepr {
             return GlyphId::NOTDEF;
         }
 
-        let result = unsafe { &*std::ptr::from_ref(&self.id_range_offset).add(offset as _) }.get();
-        let id_delta = if result == 0 { 0 } else { self.id_delta.get() as u16 };
+        let glyph_id = unsafe {
+            (&*std::ptr::from_ref(&self.id_range_offset)
+                .byte_add(self.id_range_offset.get() as _)
+                .add(offset as _))
+                .get()
+        };
 
-        GlyphId::new(result.wrapping_add(id_delta))
+        let id_delta = if glyph_id == 0 { 0 } else { self.id_delta.get() as u16 };
+
+        GlyphId::new(glyph_id.wrapping_add(id_delta))
     }
 }
