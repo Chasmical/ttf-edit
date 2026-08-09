@@ -1,5 +1,5 @@
 use crate::{
-    encodings::{Encoding, EncodingError},
+    platform::{EncodingError, EncodingId, PlatformId},
     types::{Offset16, uint16},
 };
 use std::{borrow::Cow, bstr::ByteStr, fmt};
@@ -88,7 +88,7 @@ impl NameRecordRepr {
         unsafe { storage.get(self.string_offset, self.length) }
     }
     pub fn string<'a>(&'a self, storage: &'a StringStorage) -> Result<String, EncodingError> {
-        let encoding = Encoding::new(self.platform_id.get(), self.encoding_id.get());
+        let encoding = EncodingId::new(self.platform_id.get(), self.encoding_id.get())?;
         encoding.decode_utf16be(self.bytes(storage))
     }
 }
@@ -130,18 +130,32 @@ struct LangTagRecordDebug<'a>(&'a LangTagRecordRepr, &'a StringStorage);
 
 impl<'a> fmt::Debug for NameRecordDebug<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Self(name, storage, _lang_tags) = *self;
-
-        let enc = Encoding::new(name.platform_id.get(), name.encoding_id.get());
-        let enc_name = enc.encoding_name().unwrap_or(Cow::Borrowed("Unknown"));
+        let Self(name, storage, lang_tags) = *self;
 
         let value = name.string(storage).map_err(|_| ByteStr::new(name.bytes(storage)));
 
+        let platform_id = PlatformId::new(name.platform_id.get());
+        let plat_name = platform_id.map_or("Unknown", |x| x.name());
+
+        let encoding_id = platform_id.and_then(|x| x.encoding(name.encoding_id.get()));
+        let enc_name = encoding_id.map_or(Cow::Borrowed("Unknown"), |x| x.name());
+
+        let language_id = platform_id.and_then(|x| x.language(name.language_id.get()));
+        let lang_name = language_id
+            .map(|x| match x.tag(lang_tags, storage) {
+                Some(tag) => {
+                    let eng_name =
+                        x.english_name(lang_tags, storage).unwrap_or(Cow::Borrowed("Unknown"));
+                    Cow::Owned(format!("{}: {}", tag, eng_name))
+                },
+                None => Cow::Borrowed("Unknown"),
+            })
+            .unwrap_or(Cow::Borrowed("Unknown"));
+
         f.debug_struct("NameRecord")
-            .field("platform_id", &enc.platform_id())
-            .field_with("encoding_id", |f| write!(f, "{} ({})", name.encoding_id.get(), enc_name))
-            // TODO: Parse language_id as either a platform-specific id or a LangTag
-            .field_with("language_id", |f| write!(f, "{:#06X}", name.language_id))
+            .field_with("platform_id", |f| write!(f, "{} ({})", name.platform_id, plat_name))
+            .field_with("encoding_id", |f| write!(f, "{} ({})", name.encoding_id, enc_name))
+            .field_with("language_id", |f| write!(f, "{:#06X} ({})", name.language_id, lang_name))
             // TODO: Parse name_id and display its name
             .field("name_id", &name.name_id.get())
             .field("length", &name.length.get())
