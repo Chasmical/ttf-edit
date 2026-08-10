@@ -20,3 +20,4 @@
 pub mod platform;
 pub mod tables;
 pub mod types;
+pub(crate) mod util;

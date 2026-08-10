@@ -15,15 +15,18 @@ chrono = "0.4.45"
 color-print = { version = "0.3.7", optional = true }
 encoding_rs = { version = "0.8.35", optional = true }
 lcid = "0.3.0"
+serde = { version = "1.0.229", features = ["derive"], optional = true }
+serde_json = { version = "1.0.151", optional = true }
 thiserror = "2.0.19"
 zerocopy = "0.8.55"
 
 [features]
 default = ["non-standard-encodings"]
 non-standard-encodings = ["dep:encoding_rs"]
+serde = ["dep:serde"]
 
 # Feature to enable ttf-view CLI app's dependencies
-cli = ["dep:color-print"]
+cli = ["dep:color-print", "serde", "dep:serde_json"]
 
 [[bin]]
 name = "ttf-view"
