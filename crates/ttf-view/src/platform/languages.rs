@@ -4,6 +4,8 @@ use crate::{
 };
 use std::borrow::Cow;
 
+#[derive(Copy, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[repr(u16)]
 pub enum LanguageId {
     Tagged(u16) = 0,

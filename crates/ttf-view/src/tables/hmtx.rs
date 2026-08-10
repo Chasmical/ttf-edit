@@ -136,7 +136,7 @@ impl<'a> HmtxTableHandle<'a> {
         })
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub const fn iter(&self) -> Iter<'_> {
         Iter::new(*self)
     }
 }

@@ -4,6 +4,8 @@ use std::borrow::Cow;
 #[cfg(feature = "non-standard-encodings")]
 use encoding_rs::{BIG5, EUC_KR, Encoding as EncodingRs, GB18030, SHIFT_JIS};
 
+#[derive(Copy, Hash)]
+#[derive_const(Clone, PartialEq, Eq)]
 #[repr(u16)]
 pub enum EncodingId {
     Unicode(UnicodeEncodingId) = 0,
@@ -54,7 +56,7 @@ impl EncodingId {
         platform.encoding(encoding_id).ok_or(EncodingError::UnknownEncoding)
     }
 
-    pub fn get(&self) -> u16 {
+    pub const fn get(&self) -> u16 {
         match self {
             Self::Unicode(_) => 0,
             Self::Macintosh(_) => 1,
@@ -129,22 +131,22 @@ impl EncodingId {
     }
 }
 
-impl From<UnicodeEncodingId> for EncodingId {
+const impl From<UnicodeEncodingId> for EncodingId {
     fn from(value: UnicodeEncodingId) -> Self {
         Self::Unicode(value)
     }
 }
-impl From<MacintoshEncodingId> for EncodingId {
+const impl From<MacintoshEncodingId> for EncodingId {
     fn from(value: MacintoshEncodingId) -> Self {
         Self::Macintosh(value)
     }
 }
-impl From<IsoEncodingId> for EncodingId {
+const impl From<IsoEncodingId> for EncodingId {
     fn from(value: IsoEncodingId) -> Self {
         Self::Iso(value)
     }
 }
-impl From<WindowsEncodingId> for EncodingId {
+const impl From<WindowsEncodingId> for EncodingId {
     fn from(value: WindowsEncodingId) -> Self {
         Self::Windows(value)
     }
