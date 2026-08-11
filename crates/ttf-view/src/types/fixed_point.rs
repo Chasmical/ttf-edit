@@ -61,18 +61,16 @@ macro_rules! impl_fixed_point_number {
             pub const fn get(&self) -> $fp {
                 self.frac_num() as $fp * Self::STEP
             }
+            pub const fn round_to_precision(&self) -> $fp {
+                const MULT: $fp = 10u32.pow($Name::PRECISION) as $fp;
+                (self.get() * MULT).round() / MULT
+            }
         }
 
         impl_fmt_with! {
             Debug, Display, LowerExp, UpperExp:
             |x: &$Name, f| {
-                let mut val = x.get();
-
-                if f.precision().is_none() {
-                    const MULT: $fp = 10u32.pow($Name::PRECISION) as $fp;
-                    val = (val * MULT).round() / MULT;
-                }
-                val
+                if f.precision().is_none() { x.round_to_precision() } else { x.get() }
             }
         }
 

@@ -156,7 +156,7 @@ const impl<'a> IntoIterator for &HmtxTableHandle<'a> {
     }
 }
 
-// TODO: When std::slice::Iter's Clone is constified, replace this #[derive_const]
+// TODO: When std::slice::Iter's Clone is constified, replace this with #[derive_const]
 #[derive(Clone)]
 pub struct Iter<'a> {
     glyph_id: u16,

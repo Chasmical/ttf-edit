@@ -54,13 +54,27 @@ pub trait Describer {
     fn describe_struct(self, name: &'static str) -> Self::Struct;
     fn describe_list(self, len: Option<usize>) -> Self::List;
     fn describe_map(self, len: Option<usize>) -> Self::Map;
+
+    fn describe_list_with<I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+    where
+        Self: Sized,
+        I: IntoIterator<Item: Describe>,
+    {
+        let iter = iter.into_iter();
+        let (low, high) = iter.size_hint();
+        let len = if Some(low) == high { high } else { None };
+
+        let mut d = self.describe_list(len);
+        d.entries(iter);
+        d.finish()
+    }
 }
 pub trait StructDescriber {
     type Ok;
     type Error;
 
-    fn field<T: Describe>(&mut self, name: &'static str, value: &T) -> &mut Self;
-    fn field_fmt<T: Describe>(
+    fn field<T: Describe + ?Sized>(&mut self, name: &'static str, value: &T) -> &mut Self;
+    fn field_fmt<T: Describe + ?Sized>(
         &mut self,
         name: &'static str,
         value: &T,
@@ -153,11 +167,16 @@ impl<T: Describe> Describe for &T {
         Describe::describe(*self, d)
     }
 }
-impl<T: Describe> Describe for &[T] {
+impl<T: Describe> Describe for [T] {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         let mut list = d.describe_list(Some(self.len()));
         list.entries(self.iter());
         list.finish()
+    }
+}
+impl Describe for String {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_str(self.as_str())
     }
 }
 

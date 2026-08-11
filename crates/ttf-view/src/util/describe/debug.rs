@@ -1,6 +1,9 @@
 use crate::util::{Describe, Describer, ListDescriber, MapDescriber, StructDescriber};
 
-pub fn describe_debug<T: Describe>(this: &T, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+pub fn describe_debug<T: Describe + ?Sized>(
+    this: &T,
+    f: &mut std::fmt::Formatter,
+) -> std::fmt::Result {
     this.describe(DebugDescriber(f))
 }
 
@@ -86,10 +89,10 @@ impl<'a, 'b> StructDescriber for std::fmt::DebugStruct<'a, 'b> {
     type Ok = ();
     type Error = std::fmt::Error;
 
-    fn field<T: Describe>(&mut self, name: &'static str, value: &T) -> &mut Self {
+    fn field<T: Describe + ?Sized>(&mut self, name: &'static str, value: &T) -> &mut Self {
         Self::field_with(self, name, |f| describe_debug(value, f))
     }
-    fn field_fmt<T: Describe>(
+    fn field_fmt<T: Describe + ?Sized>(
         &mut self,
         name: &'static str,
         value: &T,

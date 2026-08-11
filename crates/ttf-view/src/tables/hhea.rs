@@ -1,5 +1,7 @@
-use crate::types::{FWORD, UFWORD, int16, uint16};
-use std::fmt;
+use crate::{
+    types::{FWORD, UFWORD, int16, uint16},
+    util::{Describe, Describer, describe, describe_impl},
+};
 
 #[repr(C)]
 pub struct HheaTableRepr {
@@ -23,27 +25,29 @@ pub struct HheaTableRepr {
     pub number_of_h_metrics: uint16,
 }
 
-impl fmt::Debug for HheaTableRepr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("HheaTable")
-            .field("major_version", &self.major_version.get())
-            .field("minor_version", &self.minor_version.get())
-            .field("ascender", &self.ascender.get())
-            .field("descender", &self.descender.get())
-            .field("line_gap", &self.line_gap.get())
-            .field("advance_width_max", &self.advance_width_max.get())
-            .field("min_left_side_bearing", &self.min_left_side_bearing.get())
-            .field("min_right_side_bearing", &self.min_right_side_bearing.get())
-            .field("x_max_extent", &self.x_max_extent.get())
-            .field("caret_slope_rise", &self.caret_slope_rise.get())
-            .field("caret_slope_run", &self.caret_slope_run.get())
-            .field("caret_offset", &self.caret_offset.get())
-            .field("reserved0", &self.reserved0.get())
-            .field("reserved1", &self.reserved1.get())
-            .field("reserved2", &self.reserved2.get())
-            .field("reserved3", &self.reserved3.get())
-            .field("metric_data_format", &self.metric_data_format.get())
-            .field("number_of_h_metrics", &self.number_of_h_metrics.get())
-            .finish()
+impl Describe for HheaTableRepr {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        describe!(d, self as "HheaTable" {
+            major_version,
+            minor_version,
+            ascender,
+            descender,
+            line_gap,
+            advance_width_max,
+            min_left_side_bearing,
+            min_right_side_bearing,
+            x_max_extent,
+            caret_slope_rise,
+            caret_slope_run,
+            caret_offset,
+            reserved0,
+            reserved1,
+            reserved2,
+            reserved3,
+            metric_data_format,
+            number_of_h_metrics,
+        })
     }
 }
+
+describe_impl! { Debug, Serialize for HheaTableRepr }

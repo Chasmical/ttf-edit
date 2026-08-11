@@ -1,6 +1,8 @@
 use color_print::{ceprint, cstr};
+use serde::Serialize;
 use std::{
-    fmt::{self, Debug, Formatter},
+    error::Error,
+    fmt::Debug,
     io::{Write, stdout},
     process,
 };
@@ -19,6 +21,7 @@ enum Action {
 enum Format {
     Debug,
     Binary,
+    Json,
 }
 
 macro_rules! error_exit {
@@ -54,6 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     Some(arg) => match &*arg {
                         "dbg" | "debug" => format = Format::Debug,
                         "bin" | "binary" => format = Format::Binary,
+                        "json" => format = Format::Json,
                         format => error_exit!("Got an unknown format identifier '{format}'"),
                     },
                     None => error_exit!("Expected a format identifier after '-f'/'--format'"),
@@ -102,9 +106,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let data = dump_binary(&font_data, dir, table_tag);
                     stdout().write_all(data).unwrap();
                 },
-                Format::Debug => {
-                    let dump = fmt::from_fn(|f| dump_debug(dir, table_tag, f));
-                    println!("{:#?}", dump);
+                _ => {
+                    let mut writer = stdout().lock();
+                    dump_format(dir, table_tag, format, &mut writer)?;
                 },
             };
         },
@@ -124,14 +128,19 @@ fn dump_binary<'a>(data: &'a Vec<u8>, dir: &'a TableDirectoryRepr, tag: Option<T
     }
 }
 
-fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>, f: &mut Formatter) -> fmt::Result {
-    let debug: &dyn Debug = match tag {
+fn dump_format(
+    dir: &TableDirectoryRepr,
+    tag: Option<Tag>,
+    format: Format,
+    mut w: impl Write,
+) -> Result<(), Box<dyn Error>> {
+    let table: &dyn SerializeSpec = match tag {
         None => dir,
 
         // Some(tags::cmap) => dir.cmap(),
         Some(tags::head) => dir.head(),
         Some(tags::hhea) => dir.hhea(),
-        Some(tags::hmtx) => &dir.hmtx(),
+        // Some(tags::hmtx) => &dir.hmtx(),
         Some(tags::maxp) => dir.maxp(),
         Some(tags::name) => dir.name(),
 
@@ -143,7 +152,26 @@ fn dump_debug(dir: &TableDirectoryRepr, tag: Option<Tag>, f: &mut Formatter) -> 
             }
         },
     };
-    debug.fmt(f)
+
+    match format {
+        Format::Binary => {},
+        Format::Debug => {
+            write!(w, "{:#?}", table)?;
+        },
+        Format::Json => {
+            table.serialize_json(&mut w)?;
+        },
+    };
+    Ok(())
+}
+
+trait SerializeSpec: std::fmt::Debug {
+    fn serialize_json(&self, w: &mut dyn Write) -> serde_json::Result<()>;
+}
+impl<T: Serialize + std::fmt::Debug> SerializeSpec for T {
+    fn serialize_json(&self, w: &mut dyn Write) -> serde_json::Result<()> {
+        self.serialize(&mut serde_json::Serializer::pretty(w))
+    }
 }
 
 fn print_version() {
@@ -162,7 +190,7 @@ The project's GitHub repository: https://github.com/Chasmical/ttf-edit
   <<FONT>>  Path to the OpenType font file to view (.ttf, .otf)
 
 <s,u>Options:</>
-  <s>-f, --format</> <<FORMAT>>  The format to dump the table data in (possible values: dbg/debug, bin/binary)
+  <s>-f, --format</> <<FORMAT>>  The format to dump the table data in [default: debug] (possible values: dbg/debug, json, bin/binary)
   <s>-t, --table</> <<TAG>>      The table to dump (omit to dump the table directory)
   <s>    --list-tables</>      List all supported OpenType tables (binary format always works)
   <s>-h, --help</>             Print help
@@ -179,12 +207,12 @@ fn print_tables() {
 
 Currently only the following OpenType tables can be exported:
 
-<s>cmap</>  Character Mapping Table   bin
-<s>head</>  Font Header Table         bin,dbg
-<s>hhea</>  Horizontal Header Table   bin,dbg
-<s>hmtx</>  Horizontal Metrics Table  bin,dbg
-<s>maxp</>  Maximum Profile           bin,dbg
-<s>name</>  Naming Table              bin,dbg
+<s>cmap</>  Character Mapping Table
+<s>head</>  Font Header Table
+<s>hhea</>  Horizontal Header Table
+<s>hmtx</>  Horizontal Metrics Table
+<s>maxp</>  Maximum Profile
+<s>name</>  Naming Table
 
 Note: <s>bin</> format is always available for any tables.
 

@@ -1,7 +1,4 @@
-use crate::{
-    platform::PlatformId,
-    tables::name::{LangTagRecordRepr, StringStorage},
-};
+use crate::{platform::PlatformId, tables::name::NameTableRepr};
 use std::borrow::Cow;
 
 #[derive(Copy, Hash)]
@@ -26,15 +23,9 @@ impl LanguageId {
         }
     }
 
-    pub fn tag(
-        &self,
-        lang_tags: &[LangTagRecordRepr],
-        storage: &StringStorage,
-    ) -> Option<Cow<'static, str>> {
+    pub fn tag(&self, table: &NameTableRepr) -> Option<Cow<'static, str>> {
         Some(match self {
-            Self::Tagged(id) => {
-                Cow::Owned(lang_tags.get((id - 0x8000) as usize).map(|x| x.tag(storage))?)
-            },
+            Self::Tagged(id) => Cow::Owned(table.lang_tags().nth((id - 0x8000) as usize)?.tag()),
             Self::Macintosh(id) => Cow::Borrowed(macintosh_language_tag(*id)?),
 
             Self::Windows(id) => {
@@ -48,14 +39,10 @@ impl LanguageId {
         })
     }
 
-    pub fn english_name(
-        &self,
-        lang_tags: &[LangTagRecordRepr],
-        storage: &StringStorage,
-    ) -> Option<Cow<'static, str>> {
+    pub fn english_name(&self, table: &NameTableRepr) -> Option<Cow<'static, str>> {
         Some(match self {
             Self::Tagged(id) => {
-                let lang_tag = lang_tags.get((id - 0x8000) as usize).map(|x| x.tag(storage))?;
+                let lang_tag = table.lang_tags().nth((id - 0x8000) as usize)?.tag();
                 let lcid: &lcid::LanguageId = lang_tag.as_str().try_into().ok()?;
                 Cow::Borrowed(lcid.english_name)
             },

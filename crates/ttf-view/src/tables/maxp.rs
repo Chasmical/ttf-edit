@@ -1,5 +1,7 @@
-use crate::types::{Version16Dot16, uint16};
-use std::fmt;
+use crate::{
+    types::{Version16Dot16, uint16},
+    util::{Describe, Describer, StructDescriber, describe, describe_impl},
+};
 
 #[repr(C)]
 pub struct MaxpTableRepr {
@@ -34,28 +36,31 @@ impl MaxpTableRepr {
     }
 }
 
-impl fmt::Debug for MaxpTableRepr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut builder = f.debug_struct("MaxpTable");
-        builder.field("version", &self.version).field("num_glyphs", &self.num_glyphs.get());
+impl Describe for MaxpTableRepr {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        let mut d = d.describe_struct("MaxpTable");
+        describe!(d, self { version, num_glyphs });
 
         if let Some(v1) = self.v1_fields() {
-            builder
-                .field("max_points", &v1.max_points.get())
-                .field("max_contours", &v1.max_contours.get())
-                .field("max_composite_points", &v1.max_composite_points.get())
-                .field("max_composite_contours", &v1.max_composite_contours.get())
-                .field("max_zones", &v1.max_zones.get())
-                .field("max_twilight_points", &v1.max_twilight_points.get())
-                .field("max_storage", &v1.max_storage.get())
-                .field("max_function_defs", &v1.max_function_defs.get())
-                .field("max_instruction_defs", &v1.max_instruction_defs.get())
-                .field("max_stack_elements", &v1.max_stack_elements.get())
-                .field("max_size_of_instructions", &v1.max_size_of_instructions.get())
-                .field("max_component_elements", &v1.max_component_elements.get())
-                .field("max_component_depth", &v1.max_component_depth.get());
+            describe!(d, v1 {
+                max_points,
+                max_contours,
+                max_composite_points,
+                max_composite_contours,
+                max_zones,
+                max_twilight_points,
+                max_storage,
+                max_function_defs,
+                max_instruction_defs,
+                max_stack_elements,
+                max_size_of_instructions,
+                max_component_elements,
+                max_component_depth,
+            });
         }
 
-        builder.finish()
+        d.finish()
     }
 }
+
+describe_impl! { Debug, Serialize for MaxpTableRepr }

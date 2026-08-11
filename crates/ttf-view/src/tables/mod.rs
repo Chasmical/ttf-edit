@@ -8,8 +8,8 @@ use crate::{
         name::NameTableRepr,
     },
     types::{Offset32, Tag, tags, uint16, uint32},
+    util::{Describe, Describer, StructDescriber, describe, describe_impl},
 };
-use std::fmt;
 
 pub mod cmap;
 pub mod head;
@@ -111,35 +111,45 @@ impl_table_trait! {
     tags::name => NameTableRepr,
 }
 
-impl fmt::Debug for TableDirectoryRepr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TableDirectory")
-            .field_with("sfnt_version", |f| write!(f, "{:#010X}", self.sfnt_version))
-            .field("num_tables", &self.num_tables.get())
-            .field("search_range", &self.search_range.get())
-            .field("entry_selector", &self.entry_selector.get())
-            .field("range_shift", &self.range_shift.get())
-            .field_with("table_records", |f| {
-                let mut list = f.debug_list();
+impl Describe for TableDirectoryRepr {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        let mut d = d.describe_struct("TableDirectory");
 
-                for table in self.table_records() {
-                    list.entry_with(|f| {
-                        table.fmt(&mut f.with_options(*f.options().alternate(false)))
-                    });
-                }
-                list.finish()
-            })
-            .finish()
+        describe!(d, self {
+            sfnt_version: "{:#010X}",
+            num_tables,
+            search_range,
+            entry_selector,
+            range_shift,
+        });
+
+        d.field_fmt("table_records", self.table_records(), |f, x| {
+            let mut list = f.debug_list();
+
+            for table in x {
+                list.entry_with(|f| {
+                    let mut f = f.with_options(*f.options().alternate(false));
+                    std::fmt::Debug::fmt(table, &mut f)
+                });
+            }
+            list.finish()
+        });
+
+        d.finish()
     }
 }
 
-impl fmt::Debug for TableRecordRepr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TableRecord")
-            .field("table_tag", &self.table_tag)
-            .field_with("checksum", |f| write!(f, "{:#010X}", self.checksum))
-            .field_with("offset", |f| write!(f, "{:#010X}", self.offset))
-            .field_with("length", |f| write!(f, "{:#010X}", self.length))
-            .finish()
+describe_impl! { Debug, Serialize for TableDirectoryRepr }
+
+impl Describe for TableRecordRepr {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        describe!(d, self as "TableRecord" {
+            table_tag,
+            checksum: "{:#010X}",
+            offset: "{:#010X}",
+            length: "{:#010X}",
+        })
     }
 }
+
+describe_impl! { Debug, Serialize for TableRecordRepr }

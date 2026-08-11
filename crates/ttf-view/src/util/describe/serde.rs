@@ -4,7 +4,10 @@ use serde::{
     ser::{SerializeMap, SerializeSeq, SerializeStruct},
 };
 
-pub fn describe_serde<T: Describe, S: Serializer>(this: &T, s: S) -> Result<S::Ok, S::Error> {
+pub fn describe_serde<T: Describe + ?Sized, S: Serializer>(
+    this: &T,
+    s: S,
+) -> Result<S::Ok, S::Error> {
     this.describe(SerdeDescriber(s))
 }
 
@@ -71,7 +74,7 @@ impl<S: Serializer> Describer for SerdeDescriber<S> {
     }
 
     fn describe_struct(self, name: &'static str) -> Self::Struct {
-        SerdeStructDescriber(self.0.serialize_struct(name, 0))
+        SerdeStructDescriber(self.0.serialize_struct(name, 10))
     }
     fn describe_list(self, len: Option<usize>) -> Self::List {
         SerdeListDescriber(self.0.serialize_seq(len))
@@ -81,9 +84,9 @@ impl<S: Serializer> Describer for SerdeDescriber<S> {
     }
 }
 
-struct Proxy<'a, T: Describe>(&'a T);
+struct Proxy<'a, T: Describe + ?Sized>(&'a T);
 
-impl<'a, T: Describe> Serialize for Proxy<'a, T> {
+impl<'a, T: Describe + ?Sized> Serialize for Proxy<'a, T> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         describe_serde(self.0, s)
     }
@@ -93,7 +96,7 @@ impl<S: Serializer> StructDescriber for SerdeStructDescriber<S> {
     type Ok = S::Ok;
     type Error = S::Error;
 
-    fn field<T: Describe>(&mut self, name: &'static str, value: &T) -> &mut Self {
+    fn field<T: Describe + ?Sized>(&mut self, name: &'static str, value: &T) -> &mut Self {
         if let Ok(x) = self.0.as_mut() {
             if let Err(e) = x.serialize_field(name, &Proxy(value)) {
                 self.0 = Err(e);

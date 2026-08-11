@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+use crate::util::{Describe, Describer};
 use zerocopy::network_endian::{I16, I32, U16, U32};
 
 pub type int16 = I16;
@@ -47,3 +48,38 @@ macro_rules! impl_fmt_with {
     )*);
 }
 pub(crate) use impl_fmt_with;
+
+impl Describe for Tag {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_str(self.as_str())
+    }
+}
+impl Describe for uint24 {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_u32(self.get())
+    }
+}
+impl Describe for Fixed {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_f64(self.get())
+    }
+}
+impl Describe for F2DOT14 {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_f32(self.get())
+    }
+}
+impl Describe for Version16Dot16 {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_str(&self.to_string())
+    }
+}
+impl Describe for LongDateTime {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        if let Some(datetime) = self.datetime() {
+            d.describe_str(&datetime.to_rfc3339_opts(chrono::SecondsFormat::Secs, true))
+        } else {
+            d.describe_i64(self.epoch_seconds())
+        }
+    }
+}
