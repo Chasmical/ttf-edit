@@ -1,6 +1,6 @@
 use crate::{
     platform::{EncodingError, EncodingId, LanguageId, PlatformId},
-    types::{Offset16, uint16},
+    types::{Offset16, Tag, tags, uint16},
     util::{Describe, Describer, StructDescriber, describe, describe_impl},
 };
 use std::{borrow::Cow, bstr::ByteStr};
@@ -17,7 +17,6 @@ pub struct NameTableRepr {
     // : lang_tag_count: uint16
     // : lang_tag_records: [LangTagRecordRepr; lang_tag_count]
 }
-
 #[repr(C)]
 pub struct NameRecordRepr {
     pub platform_id: uint16,
@@ -27,11 +26,15 @@ pub struct NameRecordRepr {
     pub length: uint16,
     pub string_offset: Offset16,
 }
-
 #[repr(C)]
 pub struct LangTagRecordRepr {
     pub length: uint16,
     pub lang_tag_offset: Offset16,
+}
+
+impl super::Table for NameTableRepr {
+    const TAG: Tag = tags::name;
+    type Handle<'a> = &'a Self;
 }
 
 impl NameTableRepr {
@@ -174,7 +177,7 @@ impl Describe for NameTableRepr {
         describe!(d, self {
             version,
             count,
-            storage_offset: "{:#06X}",
+            storage_offset ["{:#06X}"],
             name_records: self.names(),
         });
 
@@ -227,7 +230,7 @@ impl<'a> Describe for NameHandle<'a> {
             write!(f, "{}", x)
         });
 
-        describe!(d, self { length, string_offset: "{:#06X}" });
+        describe!(d, self { length, string_offset ["{:#06X}"] });
 
         match self.string() {
             Ok(string) => {

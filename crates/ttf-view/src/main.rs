@@ -119,7 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn dump_binary<'a>(data: &'a Vec<u8>, dir: &'a TableDirectoryRepr, tag: Option<Tag>) -> &'a [u8] {
     match tag {
-        Some(tag) => dir.table_record(tag).map_or_default(|t| t.data(dir)),
+        Some(tag) => dir.table_record(tag).map_or_default(|t| t.table_as_bytes()),
         None => {
             let dir_size = size_of::<TableDirectoryRepr>()
                 + dir.table_records().len() * size_of::<TableRecordRepr>();

@@ -187,6 +187,9 @@ macro_rules! describe {
     ( $describer:ident, $describee:ident, $field:ident [$format:literal] ) => {
         $crate::util::StructDescriber::field_fmt(&mut $describer, stringify!($field), &$describee.$field, |f, x| write!(f, $format, x))
     };
+    ( $describer:ident, $describee:ident, $field:ident : $value:literal ) => {
+        compile_error!("You probably meant to use the literal as a format string, not a value")
+    };
     ( $describer:ident, $describee:ident, $field:ident : $value:expr ) => {
         $crate::util::StructDescriber::field(&mut $describer, stringify!($field), &$value)
     };

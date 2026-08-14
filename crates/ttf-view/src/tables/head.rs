@@ -1,5 +1,5 @@
 use crate::{
-    types::{Fixed, LongDateTime, int16, uint16, uint32},
+    types::{Fixed, LongDateTime, Tag, int16, tags, uint16, uint32},
     util::{Describe, Describer, describe, describe_impl},
 };
 
@@ -23,6 +23,11 @@ pub struct HeadTableRepr {
     pub font_direction_hint: int16,
     pub index_to_loc_format: int16,
     pub glyph_data_format: int16,
+}
+
+impl super::Table for HeadTableRepr {
+    const TAG: Tag = tags::head;
+    type Handle<'a> = &'a Self;
 }
 
 impl Describe for HeadTableRepr {

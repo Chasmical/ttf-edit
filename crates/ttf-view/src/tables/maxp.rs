@@ -1,5 +1,5 @@
 use crate::{
-    types::{Version16Dot16, uint16},
+    types::{Tag, Version16Dot16, tags, uint16},
     util::{Describe, Describer, StructDescriber, describe, describe_impl},
 };
 
@@ -27,6 +27,11 @@ pub struct MaxpTableReprV1Fields {
     pub max_size_of_instructions: uint16,
     pub max_component_elements: uint16,
     pub max_component_depth: uint16,
+}
+
+impl super::Table for MaxpTableRepr {
+    const TAG: Tag = tags::maxp;
+    type Handle<'a> = &'a Self;
 }
 
 impl MaxpTableRepr {

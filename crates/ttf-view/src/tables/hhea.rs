@@ -1,5 +1,5 @@
 use crate::{
-    types::{FWORD, UFWORD, int16, uint16},
+    types::{FWORD, Tag, UFWORD, int16, tags, uint16},
     util::{Describe, Describer, describe, describe_impl},
 };
 
@@ -23,6 +23,11 @@ pub struct HheaTableRepr {
     pub reserved3: int16,
     pub metric_data_format: int16,
     pub number_of_h_metrics: uint16,
+}
+
+impl super::Table for HheaTableRepr {
+    const TAG: Tag = tags::hhea;
+    type Handle<'a> = &'a Self;
 }
 
 impl Describe for HheaTableRepr {

@@ -53,6 +53,17 @@ pub struct Os_2TableRepr {
     us_upper_optical_point_size: uint16,
 }
 
+impl super::Table for Os_2TableRepr {
+    const TAG: Tag = tags::OS_2;
+    type Handle<'a> = Os_2TableHandle<'a>;
+}
+impl<'a> super::TableHandle<'a> for Os_2TableHandle<'a> {
+    fn in_directory(dir: &'a TableDirectoryRepr) -> Option<Self> {
+        let record = dir.table_record(tags::OS_2)?;
+        Some(Self { os_2: record.table_as()?, len: record.length.get() })
+    }
+}
+
 pub struct Os_2TableHandle<'a> {
     os_2: &'a Os_2TableRepr,
     len: u32,
@@ -65,10 +76,6 @@ const impl<'a> std::ops::Deref for Os_2TableHandle<'a> {
 }
 
 impl<'a> Os_2TableHandle<'a> {
-    pub fn new(dir: &'a TableDirectoryRepr) -> Self {
-        let rec = dir.table_record(tags::OS_2).unwrap();
-        Self { os_2: rec.get_as(dir).unwrap(), len: rec.length.get() }
-    }
     pub const fn s_typo_ascender(&self) -> Option<FWORD> {
         if self.len >= 0x46 { Some(self.s_typo_ascender) } else { None }
     }

@@ -1,4 +1,4 @@
-use crate::types::{Offset32, uint16, uint32};
+use crate::types::{Offset32, Tag, tags, uint16, uint32};
 use std::mem::ManuallyDrop;
 
 mod codepoint;
@@ -25,12 +25,16 @@ pub struct CmapTableRepr {
     pub num_tables: uint16,
     encoding_records: [EncodingRecordRepr; 0],
 }
-
 #[repr(C)]
 pub struct EncodingRecordRepr {
     pub platform_id: uint16,
     pub encoding_id: uint16,
     pub subtable_offset: Offset32,
+}
+
+impl super::Table for CmapTableRepr {
+    const TAG: Tag = tags::cmap;
+    type Handle<'a> = &'a Self;
 }
 
 impl CmapTableRepr {
