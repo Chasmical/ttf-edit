@@ -6,6 +6,7 @@ use crate::{
         hmtx::{HmtxTableHandle, HmtxTableRepr},
         maxp::MaxpTableRepr,
         name::NameTableRepr,
+        os_2::{Os_2TableHandle, Os_2TableRepr},
     },
     types::{Offset32, Tag, tags, uint16, uint32},
     util::{Describe, Describer, StructDescriber, describe, describe_impl},
@@ -17,6 +18,7 @@ pub mod hhea;
 pub mod hmtx;
 pub mod maxp;
 pub mod name;
+pub mod os_2;
 
 #[repr(C)]
 #[non_exhaustive]
@@ -74,6 +76,9 @@ impl TableDirectoryRepr {
     pub fn name(&self) -> &NameTableRepr {
         self.table().unwrap()
     }
+    pub fn os_2(&self) -> Os_2TableHandle<'_> {
+        Os_2TableHandle::new(self)
+    }
 }
 
 impl TableRecordRepr {
@@ -109,6 +114,7 @@ impl_table_trait! {
     tags::hmtx => HmtxTableRepr,
     tags::maxp => MaxpTableRepr,
     tags::name => NameTableRepr,
+    tags::OS_2 => Os_2TableRepr,
 }
 
 impl Describe for TableDirectoryRepr {

@@ -171,9 +171,12 @@ impl Describe for NameTableRepr {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         let mut d = d.describe_struct("NameTable");
 
-        describe!(d, self { version, count, storage_offset: "{:#06X}" });
-
-        d.field("name_records", &self.names());
+        describe!(d, self {
+            version,
+            count,
+            storage_offset: "{:#06X}",
+            name_records: self.names(),
+        });
 
         if self.version.get() > 0 {
             d.field("lang_tag_count", &self.lang_tag_count());
@@ -240,12 +243,10 @@ impl<'a> Describe for NameHandle<'a> {
 }
 impl<'a> Describe for LangTagHandle<'a> {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
-        let mut d = d.describe_struct("LangTagRecord");
-
-        describe!(d, self { length, lang_tag_offset: "{:#06X}" });
-
-        d.field("tag", &self.tag());
-
-        d.finish()
+        describe!(d, self as "LangTagRecord" {
+            length,
+            lang_tag_offset ["{:#06X}"],
+            tag: self.tag(),
+        })
     }
 }

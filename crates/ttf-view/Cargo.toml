@@ -11,6 +11,7 @@ license = "MIT OR Apache-2.0"
 readme = "../../README.md"
 
 [dependencies]
+bitflags = "2.13.1"
 chrono = "0.4.45"
 color-print = { version = "0.3.7", optional = true }
 encoding_rs = { version = "0.8.35", optional = true }

@@ -181,28 +181,34 @@ impl Describe for String {
 }
 
 macro_rules! describe {
+    ( $describer:ident, $describee:ident, $field:ident [$format:literal] : $value:expr ) => {
+        $crate::util::StructDescriber::field_fmt(&mut $describer, stringify!($field), &$value, |f, x| write!(f, $format, x))
+    };
+    ( $describer:ident, $describee:ident, $field:ident [$format:literal] ) => {
+        $crate::util::StructDescriber::field_fmt(&mut $describer, stringify!($field), &$describee.$field, |f, x| write!(f, $format, x))
+    };
+    ( $describer:ident, $describee:ident, $field:ident : $value:expr ) => {
+        $crate::util::StructDescriber::field(&mut $describer, stringify!($field), &$value)
+    };
     ( $describer:ident, $describee:ident, $field:ident ) => {
         $crate::util::StructDescriber::field(&mut $describer, stringify!($field), &$describee.$field)
-    };
-    ( $describer:ident, $describee:ident, $field:ident: $format:literal ) => {
-        $crate::util::StructDescriber::field_fmt(&mut $describer, stringify!($field), &$describee.$field, |f, x| write!(f, $format, x))
     };
 
     (
         $describer:ident, $describee:ident {
-            $( $field:ident $(: $format:literal )? ),* $(,)?
+            $( $field:ident $( [$format:literal] )? $(: $value:expr )? ),* $(,)?
         }
     ) => {
-        $( $crate::util::describe!($describer, $describee, $field $(: $format )? ); )*
+        $( $crate::util::describe!($describer, $describee, $field $( [$format] )? $(: $value )? ); )*
     };
 
     (
         $describer:ident, $describee:ident as $struct_name:literal {
-            $( $field:ident $(: $format:literal )? ),* $(,)?
+            $( $field:ident $( [$format:literal] )? $(: $value:expr )? ),* $(,)?
         }
     ) => {{
         let mut d = $crate::util::Describer::describe_struct($describer, $struct_name);
-        $( $crate::util::describe!(d, $describee, $field $(: $format )? ); )*
+        $( $crate::util::describe!(d, $describee, $field $( [$format] )? $(: $value )? ); )*
         $crate::util::StructDescriber::finish(d)
     }};
 }
