@@ -1,7 +1,7 @@
 use crate::{
     platform::{EncodingError, EncodingId, LanguageId, PlatformId},
     types::{Offset16, Tag, tags, uint16},
-    util::{Describe, Describer, StructDescriber, describe, describe_impl},
+    util::{Describe, Describer, StructDescriber, describe, describe_impl, iterator_map},
 };
 use std::{borrow::Cow, bstr::ByteStr};
 
@@ -70,52 +70,41 @@ impl NameTableRepr {
 
 #[derive(Copy)]
 #[derive_const(Clone)]
-pub struct NameHandle<'a>(&'a NameRecordRepr, &'a NameTableRepr);
+pub struct NameHandle<'a>(&'a NameTableRepr, &'a NameRecordRepr);
 #[derive(Copy)]
 #[derive_const(Clone)]
-pub struct LangTagHandle<'a>(&'a LangTagRecordRepr, &'a NameTableRepr);
+pub struct LangTagHandle<'a>(&'a NameTableRepr, &'a LangTagRecordRepr);
 
-const impl<'a> std::ops::Deref for NameHandle<'a> {
+const impl std::ops::Deref for NameHandle<'_> {
     type Target = NameRecordRepr;
-    fn deref(&self) -> &'a Self::Target {
-        self.0
+    fn deref(&self) -> &Self::Target {
+        self.1
     }
 }
-const impl<'a> std::ops::Deref for LangTagHandle<'a> {
+const impl std::ops::Deref for LangTagHandle<'_> {
     type Target = LangTagRecordRepr;
-    fn deref(&self) -> &'a Self::Target {
-        self.0
-    }
-}
-
-impl NameRecordRepr {
-    pub const unsafe fn handle<'a>(&'a self, name: &'a NameTableRepr) -> NameHandle<'a> {
-        NameHandle(self, name)
-    }
-}
-impl LangTagRecordRepr {
-    pub const unsafe fn handle<'a>(&'a self, name: &'a NameTableRepr) -> LangTagHandle<'a> {
-        LangTagHandle(self, name)
+    fn deref(&self) -> &Self::Target {
+        self.1
     }
 }
 
 impl<'a> NameHandle<'a> {
     pub const fn bytes(&self) -> &'a [u8] {
         unsafe {
-            let start = self.1.string_storage().byte_add(self.0.string_offset.get() as usize);
-            std::slice::from_raw_parts(start, self.0.length.get() as usize)
+            let start = self.0.string_storage().byte_add(self.1.string_offset.get() as usize);
+            std::slice::from_raw_parts(start, self.1.length.get() as usize)
         }
     }
     pub fn string(&self) -> Result<String, EncodingError> {
-        let encoding = EncodingId::new(self.0.platform_id.get(), self.0.encoding_id.get())?;
+        let encoding = EncodingId::new(self.1.platform_id.get(), self.1.encoding_id.get())?;
         encoding.decode_utf16be(self.bytes())
     }
 }
 impl<'a> LangTagHandle<'a> {
     pub const fn bytes(&self) -> &'a [u8] {
         unsafe {
-            let start = self.1.string_storage().byte_add(self.0.lang_tag_offset.get() as usize);
-            std::slice::from_raw_parts(start, self.0.length.get() as usize)
+            let start = self.0.string_storage().byte_add(self.1.lang_tag_offset.get() as usize);
+            std::slice::from_raw_parts(start, self.1.length.get() as usize)
         }
     }
     pub fn tag(&self) -> String {
@@ -128,47 +117,41 @@ impl<'a> LangTagHandle<'a> {
 #[derive(Clone)]
 pub struct NamesIter<'a> {
     table: &'a NameTableRepr,
-    records: std::slice::Iter<'a, NameRecordRepr>,
+    inner: std::slice::Iter<'a, NameRecordRepr>,
 }
-
 impl<'a> NamesIter<'a> {
     pub const fn new(table: &'a NameTableRepr) -> Self {
-        Self { table, records: table.name_records().iter() }
+        Self { table, inner: table.name_records().iter() }
     }
-    // TODO: When std::slice::Iter::as_slice is constified, constify fn as_records()
+    // TODO: When std::slice::Iter's as_slice() is constified, make as_records() const
     pub fn as_records(&self) -> &'a [NameRecordRepr] {
-        self.records.as_slice()
+        self.inner.as_slice()
     }
 }
-impl<'a> Iterator for NamesIter<'a> {
+iterator_map!(NamesIter<'a> {
     type Item = NameHandle<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.records.next().map(|x| unsafe { x.handle(self.table) })
-    }
-}
+    |this, x| NameHandle(this.table, x)
+});
 
 // TODO: When std::slice::Iter's Clone is constified, replace this with #[derive_const]
 #[derive(Clone)]
 pub struct LangTagsIter<'a> {
     table: &'a NameTableRepr,
-    records: std::slice::Iter<'a, LangTagRecordRepr>,
+    inner: std::slice::Iter<'a, LangTagRecordRepr>,
 }
-
 impl<'a> LangTagsIter<'a> {
     pub const fn new(table: &'a NameTableRepr) -> Self {
-        Self { table, records: table.lang_tag_records().iter() }
+        Self { table, inner: table.lang_tag_records().iter() }
     }
-    // TODO: When std::slice::Iter::as_slice is constified, constify fn as_records()
+    // TODO: When std::slice::Iter's as_slice() is constified, make as_records() const
     pub fn as_records(&self) -> &'a [LangTagRecordRepr] {
-        self.records.as_slice()
+        self.inner.as_slice()
     }
 }
-impl<'a> Iterator for LangTagsIter<'a> {
+iterator_map!(LangTagsIter<'a> {
     type Item = LangTagHandle<'a>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.records.next().map(|x| unsafe { x.handle(self.table) })
-    }
-}
+    |this, x| LangTagHandle(this.table, x)
+});
 
 impl Describe for NameTableRepr {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
@@ -191,18 +174,31 @@ impl Describe for NameTableRepr {
 }
 describe_impl! { Debug, Serialize for NameTableRepr }
 
-impl<'a> Describe for NamesIter<'a> {
+impl std::fmt::Debug for NamesIter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_tuple("NamesIter").field(&Vec::from_iter(self.clone())).finish()
+    }
+}
+impl Describe for NamesIter<'_> {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         d.describe_list_with(self.clone())
     }
 }
-impl<'a> Describe for LangTagsIter<'a> {
-    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
-        d.describe_list_with(self.clone())
-    }
-}
+describe_impl! { Serialize for NamesIter<'_> }
 
-impl<'a> Describe for NameHandle<'a> {
+impl std::fmt::Debug for LangTagsIter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_tuple("LangTagsIter").field(&Vec::from_iter(self.clone())).finish()
+    }
+}
+impl Describe for LangTagsIter<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_list_with(self.clone())
+    }
+}
+describe_impl! { Serialize for LangTagsIter<'_> }
+
+impl Describe for NameHandle<'_> {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         let mut d = d.describe_struct("NameRecord");
 
@@ -219,9 +215,9 @@ impl<'a> Describe for NameHandle<'a> {
 
         d.field_fmt("language_id", &self.language_id, |f, x| {
             let lang = LanguageId::new(self.platform_id.get(), x.get());
-            let tag = lang.and_then(|x| x.tag(self.1)).unwrap_or(Cow::Borrowed("und"));
+            let tag = lang.and_then(|x| x.tag(self.0)).unwrap_or(Cow::Borrowed("und"));
             let name =
-                lang.and_then(|x| x.english_name(self.1)).unwrap_or(Cow::Borrowed("Unknown"));
+                lang.and_then(|x| x.english_name(self.0)).unwrap_or(Cow::Borrowed("Unknown"));
             write!(f, "{:#06X} ({}: {})", x, tag, name)
         });
 
@@ -244,7 +240,9 @@ impl<'a> Describe for NameHandle<'a> {
         d.finish()
     }
 }
-impl<'a> Describe for LangTagHandle<'a> {
+describe_impl! { Debug, Serialize for NameHandle<'_> }
+
+impl Describe for LangTagHandle<'_> {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         describe!(d, self as "LangTagRecord" {
             length,
@@ -253,3 +251,6 @@ impl<'a> Describe for LangTagHandle<'a> {
         })
     }
 }
+describe_impl! { Debug, Serialize for LangTagHandle<'_> }
+
+// TODO: impls for records

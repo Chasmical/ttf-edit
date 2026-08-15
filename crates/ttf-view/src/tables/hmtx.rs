@@ -1,8 +1,9 @@
 use crate::{
     tables::{TableDirectoryRepr, cmap::GlyphId, hhea::HheaTableRepr, maxp::MaxpTableRepr},
     types::{FWORD, Tag, UFWORD, int16, tags},
+    util::{Describe, Describer, MapDescriber, StructDescriber, describe, describe_impl},
 };
-use std::{fmt, iter::FusedIterator};
+use std::iter::FusedIterator;
 
 #[repr(C)]
 #[non_exhaustive]
@@ -28,7 +29,7 @@ pub struct HmtxTableHandle<'a> {
     num_h_metrics: usize,
 }
 
-#[derive(Debug, Copy, Hash)]
+#[derive(Copy, Hash)]
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LongHorMetric {
     pub advance_width: u16,
@@ -181,7 +182,7 @@ impl<'a> Iter<'a> {
     }
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = (GlyphId, LongHorMetric);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -232,47 +233,80 @@ impl<'a> Iterator for Iter<'a> {
         (len, Some(len))
     }
 }
-impl<'a> ExactSizeIterator for Iter<'a> {
+impl ExactSizeIterator for Iter<'_> {
     fn len(&self) -> usize {
         self.h_metrics.len() + self.lsbs.len()
     }
 }
-impl<'a> FusedIterator for Iter<'a> {}
+impl FusedIterator for Iter<'_> {}
 
-impl<'a> fmt::Debug for HmtxTableHandle<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("HmtxTable")
-            .field("number_of_h_metrics", &self.num_h_metrics())
-            .field("num_glyphs", &self.num_glyphs())
-            .field_with("aws_lsbs", |f| {
-                let mut f = f.with_options(*f.options().alternate(false));
+impl Describe for HmtxTableHandle<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        let mut d = d.describe_struct("HmtxTable");
 
-                let mut builder = f.debug_map();
-                let last = self.num_glyphs() - 1;
-                for (glyph, metric) in self.iter() {
-                    struct GlyphWrapper(GlyphId);
-                    struct EntryWrapper(LongHorMetric, bool);
+        describe!(d, self {
+            number_of_h_metrics: self.num_h_metrics(),
+            num_glyphs: self.num_glyphs(),
+        });
 
-                    impl fmt::Debug for GlyphWrapper {
-                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                            if self.0.get().is_multiple_of(8) {
-                                f.write_str("\n    ")?;
-                            }
-                            self.0.fmt(f)
-                        }
+        d.field_fmt("aws_lsbs", &self.iter(), |f, _| {
+            let mut f = f.with_options(*f.options().alternate(false));
+
+            let mut builder = f.debug_map();
+            let last = self.num_glyphs() - 1;
+
+            struct GlyphWrapper(GlyphId);
+            struct EntryWrapper(LongHorMetric, bool);
+
+            impl std::fmt::Debug for GlyphWrapper {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    if self.0.get().is_multiple_of(8) {
+                        f.write_str("\n    ")?;
                     }
-                    impl fmt::Debug for EntryWrapper {
-                        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                            (self.0.advance_width, self.0.lsb).fmt(f)?;
-                            if self.1 { f.write_str("\n") } else { Ok(()) }
-                        }
-                    }
-
-                    builder.entry(&GlyphWrapper(glyph), &EntryWrapper(metric, glyph.get() == last));
+                    self.0.fmt(f)
                 }
+            }
+            impl std::fmt::Debug for EntryWrapper {
+                fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    (self.0.advance_width, self.0.lsb).fmt(f)?;
+                    if self.1 { f.write_str("\n") } else { Ok(()) }
+                }
+            }
 
-                builder.finish()
-            })
-            .finish()
+            for (glyph, metric) in self.iter() {
+                builder.entry(&GlyphWrapper(glyph), &EntryWrapper(metric, glyph.get() == last));
+            }
+
+            builder.finish()
+        });
+
+        d.finish()
     }
 }
+describe_impl! { Debug, Serialize for HmtxTableHandle<'_> }
+
+impl std::fmt::Debug for Iter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_tuple("Iter").field(&Vec::from_iter(self.clone())).finish()
+    }
+}
+impl Describe for Iter<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_map_with(self.clone())
+    }
+}
+describe_impl! { Serialize for Iter<'_> }
+
+impl Describe for LongHorMetricRepr {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        LongHorMetric::from(self).describe(d)
+    }
+}
+describe_impl! { Debug, Serialize for LongHorMetricRepr }
+
+impl Describe for LongHorMetric {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        describe!(d, self as "LongHorMetric" { advance_width, lsb })
+    }
+}
+describe_impl! { Debug, Serialize for LongHorMetric }

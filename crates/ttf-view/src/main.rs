@@ -140,9 +140,10 @@ fn dump_format(
         // Some(tags::cmap) => dir.cmap(),
         Some(tags::head) => dir.head(),
         Some(tags::hhea) => dir.hhea(),
-        // Some(tags::hmtx) => &dir.hmtx(),
+        Some(tags::hmtx) => &dir.hmtx(),
         Some(tags::maxp) => dir.maxp(),
         Some(tags::name) => dir.name(),
+        Some(tags::OS_2) => &dir.os_2(),
 
         Some(table_tag @ _) => {
             if Tag::KNOWN_TAGS.contains(&table_tag) {

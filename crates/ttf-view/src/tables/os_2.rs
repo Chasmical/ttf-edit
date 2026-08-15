@@ -2,7 +2,7 @@
 use crate::{
     tables::TableDirectoryRepr,
     types::{FWORD, Tag, UFWORD, int16, tags, uint16, uint32},
-    util::{Describe, Describer, describe},
+    util::{Describe, Describer, StructDescriber, describe, describe_impl},
 };
 
 #[repr(C)]
@@ -64,18 +64,49 @@ impl<'a> super::TableHandle<'a> for Os_2TableHandle<'a> {
     }
 }
 
+#[derive(Copy)]
+#[derive_const(Clone)]
 pub struct Os_2TableHandle<'a> {
     os_2: &'a Os_2TableRepr,
     len: u32,
 }
-const impl<'a> std::ops::Deref for Os_2TableHandle<'a> {
+
+const impl std::ops::Deref for Os_2TableHandle<'_> {
     type Target = Os_2TableRepr;
     fn deref(&self) -> &Self::Target {
         self.os_2
     }
 }
 
-impl<'a> Os_2TableHandle<'a> {
+impl Os_2TableRepr {
+    pub const fn ul_code_page_range_1(&self) -> Option<uint32> {
+        if self.version.get() >= 1 { Some(self.ul_code_page_range_1) } else { None }
+    }
+    pub const fn ul_code_page_range_2(&self) -> Option<uint32> {
+        if self.version.get() >= 1 { Some(self.ul_code_page_range_2) } else { None }
+    }
+    pub const fn code_page_range(&self) -> Option<CodePageRange> {
+        if self.version.get() >= 1 {
+            Some(CodePageRange::from_bits_retain(
+                (self.ul_code_page_range_1.get() as u64)
+                    | ((self.ul_code_page_range_2.get() as u64) << 32),
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub const fn unicode_range(&self) -> UnicodeRange {
+        UnicodeRange::from_bits_retain(
+            (self.ul_unicode_range_1.get() as u128)
+                | ((self.ul_unicode_range_2.get() as u128) << 32)
+                | ((self.ul_unicode_range_3.get() as u128) << 64)
+                | ((self.ul_unicode_range_4.get() as u128) << 96),
+        )
+    }
+}
+
+impl Os_2TableHandle<'_> {
     pub const fn s_typo_ascender(&self) -> Option<FWORD> {
         if self.len >= 0x46 { Some(self.s_typo_ascender) } else { None }
     }
@@ -105,34 +136,6 @@ pub struct Panose {
     pub b_letterform: u8,
     pub b_midline: u8,
     pub b_x_height: u8,
-}
-
-impl Os_2TableRepr {
-    pub const fn ul_code_page_range_1(&self) -> Option<uint32> {
-        if self.version.get() >= 1 { Some(self.ul_code_page_range_1) } else { None }
-    }
-    pub const fn ul_code_page_range_2(&self) -> Option<uint32> {
-        if self.version.get() >= 1 { Some(self.ul_code_page_range_2) } else { None }
-    }
-    pub const fn code_page_range(&self) -> Option<CodePageRange> {
-        if self.version.get() >= 1 {
-            Some(CodePageRange::from_bits_retain(
-                (self.ul_code_page_range_1.get() as u64)
-                    | ((self.ul_code_page_range_2.get() as u64) << 32),
-            ))
-        } else {
-            None
-        }
-    }
-
-    pub const fn unicode_range(&self) -> UnicodeRange {
-        UnicodeRange::from_bits_retain(
-            (self.ul_unicode_range_1.get() as u128)
-                | ((self.ul_unicode_range_2.get() as u128) << 32)
-                | ((self.ul_unicode_range_3.get() as u128) << 64)
-                | ((self.ul_unicode_range_4.get() as u128) << 96),
-        )
-    }
 }
 
 bitflags::bitflags! {
@@ -357,12 +360,14 @@ bitflags::bitflags! {
 
 impl Describe for Os_2TableRepr {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
-        describe!(d, self as "Os_2Table" {
+        let mut d = d.describe_struct("OS_2Table");
+
+        describe!(d, self {
             version,
             x_avg_char_width,
             us_weight_class,
             us_width_class,
-            fs_type,
+            fs_type ["{:#018b}"],
             y_subscript_x_size,
             y_subscript_y_size,
             y_subscript_x_offset,
@@ -375,17 +380,51 @@ impl Describe for Os_2TableRepr {
             y_strikeout_position,
             s_family_class,
             panose,
-            ul_unicode_range_1,
-            ul_unicode_range_2,
-            ul_unicode_range_3,
-            ul_unicode_range_4,
-            ach_vend_id,
-            fs_selection,
+            ul_unicode_range_1 ["{:#034b}"],
+            ul_unicode_range_2 ["{:#034b}"],
+            ul_unicode_range_3 ["{:#034b}"],
+            ul_unicode_range_4 ["{:#034b}"],
+            ach_vend_id ["{:?}"],
+            fs_selection ["{:#018b}"],
             us_first_char_index,
             us_last_char_index,
-        })
+            s_typo_ascender,
+            s_typo_descender,
+            s_typo_line_gap,
+            us_win_ascent,
+            us_win_descent,
+        });
+
+        if self.version.get() >= 1 {
+            describe!(d, self {
+                ul_code_page_range_1 ["{:#034b}"],
+                ul_code_page_range_2 ["{:#034b}"],
+            });
+        }
+        if self.version.get() >= 4 {
+            describe!(d, self {
+                sx_height,
+                s_cap_height,
+                us_default_char,
+                us_break_char,
+                us_max_content,
+            });
+        }
+        if self.version.get() >= 5 {
+            describe!(d, self { us_lower_optical_point_size, us_upper_optical_point_size });
+        }
+
+        d.finish()
     }
 }
+describe_impl! { Debug, Serialize for Os_2TableRepr }
+
+impl Describe for Os_2TableHandle<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        (**self).describe(d)
+    }
+}
+describe_impl! { Debug, Serialize for Os_2TableHandle<'_> }
 
 impl Describe for Panose {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
@@ -403,3 +442,4 @@ impl Describe for Panose {
         })
     }
 }
+describe_impl! { Debug, Serialize for Panose }

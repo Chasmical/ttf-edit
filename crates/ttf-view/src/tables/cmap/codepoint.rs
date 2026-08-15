@@ -1,4 +1,7 @@
-use crate::types::impl_fmt_with;
+use crate::{
+    types::impl_fmt_with,
+    util::{Describe, Describer, describe_impl},
+};
 
 #[derive(Copy, Hash)]
 #[derive_const(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -17,6 +20,13 @@ impl_fmt_with! {
     Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp:
     |x: &Codepoint| x.get()
 }
+
+impl Describe for Codepoint {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_u32(self.0)
+    }
+}
+describe_impl! { Serialize for Codepoint }
 
 // Conversions from std integer types to Codepoint
 const impl From<u8> for Codepoint {

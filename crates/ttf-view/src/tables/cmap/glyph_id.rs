@@ -1,4 +1,7 @@
-use crate::types::impl_fmt_with;
+use crate::{
+    types::impl_fmt_with,
+    util::{Describe, Describer, describe_impl},
+};
 use std::{convert::Infallible, ops::FromResidual};
 
 #[derive(Copy, Hash)]
@@ -28,6 +31,13 @@ impl_fmt_with! {
     Debug, Display, Binary, Octal, LowerHex, UpperHex, LowerExp, UpperExp:
     |x: &GlyphId| x.get()
 }
+
+impl Describe for GlyphId {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_u16(self.0)
+    }
+}
+describe_impl! { Serialize for GlyphId }
 
 // Conversions from std integer types to GlyphId
 const impl From<u8> for GlyphId {

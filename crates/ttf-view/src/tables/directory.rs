@@ -52,10 +52,11 @@ impl TableDirectoryRepr {
     // Note: see src/tables/mod.rs for specific table methods
 }
 
+#[derive(Copy)]
 #[derive_const(Clone)]
 pub struct TableRecordHandle<'a>(&'a TableDirectoryRepr, &'a TableRecordRepr);
 
-const impl<'a> std::ops::Deref for TableRecordHandle<'a> {
+const impl std::ops::Deref for TableRecordHandle<'_> {
     type Target = TableRecordRepr;
     fn deref(&self) -> &Self::Target {
         self.1
@@ -78,17 +79,21 @@ impl<'a> TableRecordHandle<'a> {
 
     pub fn calculate_checksum(&self) -> u32 {
         let (uint32s, rest) = self.table_as_bytes().as_chunks::<4>();
-        let mut sum: u32 = uint32s.iter().map(|x| u32::from_be_bytes(*x)).sum();
+        let mut sum = 0u32;
+
+        for chunk in uint32s {
+            sum = sum.wrapping_add(u32::from_be_bytes(*chunk));
+        }
 
         if !rest.is_empty() {
             let mut buf = [0; 4];
             buf[..rest.len()].copy_from_slice(rest);
-            sum += u32::from_be_bytes(buf);
+            sum = sum.wrapping_add(u32::from_be_bytes(buf));
         }
 
         if self.table_tag == tags::head {
             let checksum_adjustment = u32::from_be_bytes(uint32s[2]);
-            sum -= checksum_adjustment;
+            sum = sum.wrapping_sub(checksum_adjustment);
         }
 
         sum
@@ -104,6 +109,10 @@ pub struct TableRecordsIter<'a> {
 impl<'a> TableRecordsIter<'a> {
     pub const fn new(dir: &'a TableDirectoryRepr) -> Self {
         Self { dir, inner: dir.table_records_raw().iter() }
+    }
+    // TODO: When std::slice::Iter's as_slice() is constified, make as_records() const
+    pub fn as_records(&self) -> &'a [TableRecordRepr] {
+        self.inner.as_slice()
     }
 }
 iterator_map!(TableRecordsIter<'a> {
@@ -123,13 +132,13 @@ impl Describe for TableDirectoryRepr {
             range_shift,
         });
 
-        d.field_fmt("table_records", self.table_records_raw(), |f, x| {
+        d.field_fmt("table_records", self.table_records_raw(), |f, _| {
             let mut list = f.debug_list();
 
-            for table in x {
+            for table in self.table_records() {
                 list.entry_with(|f| {
                     let mut f = f.with_options(*f.options().alternate(false));
-                    std::fmt::Debug::fmt(table, &mut f)
+                    std::fmt::Debug::fmt(&table, &mut f)
                 });
             }
             list.finish()
@@ -138,18 +147,35 @@ impl Describe for TableDirectoryRepr {
         d.finish()
     }
 }
-
 describe_impl! { Debug, Serialize for TableDirectoryRepr }
+
+impl std::fmt::Debug for TableRecordsIter<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_tuple("TableRecordsIter").field(&self.as_records()).finish()
+    }
+}
+impl Describe for TableRecordsIter<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        d.describe_list_with(self.clone())
+    }
+}
+describe_impl! { Serialize for TableRecordsIter<'_> }
+
+impl Describe for TableRecordHandle<'_> {
+    fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
+        self.1.describe(d)
+    }
+}
+describe_impl! { Debug, Serialize for TableRecordHandle<'_> }
 
 impl Describe for TableRecordRepr {
     fn describe<D: Describer>(&self, d: D) -> Result<D::Ok, D::Error> {
         describe!(d, self as "TableRecord" {
-            table_tag,
+            table_tag ["{:?}"],
             checksum ["{:#010X}"],
             offset ["{:#010X}"],
             length ["{:#010X}"],
         })
     }
 }
-
 describe_impl! { Debug, Serialize for TableRecordRepr }

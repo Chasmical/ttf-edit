@@ -68,6 +68,21 @@ pub trait Describer {
         d.entries(iter);
         d.finish()
     }
+    fn describe_map_with<K, V, I>(self, iter: I) -> Result<Self::Ok, Self::Error>
+    where
+        Self: Sized,
+        K: Describe,
+        V: Describe,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        let iter = iter.into_iter();
+        let (low, high) = iter.size_hint();
+        let len = if Some(low) == high { high } else { None };
+
+        let mut d = self.describe_map(len);
+        d.entries(iter);
+        d.finish()
+    }
 }
 pub trait StructDescriber {
     type Ok;

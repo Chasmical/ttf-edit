@@ -38,15 +38,15 @@ impl Describe for HeadTableRepr {
             font_revision ["{}"],
             checksum_adjustment ["{:#010X}"],
             magic_number ["{:#010X}"],
-            flags ["{:#017b}"],
+            flags ["{:#018b}"],
             units_per_em,
-            created,
-            modified,
+            created ["{:?}"],
+            modified ["{:?}"],
             x_min,
             y_min,
             x_max,
             y_max,
-            mac_style ["{:#09b}"],
+            mac_style ["{:#018b}"],
             lowest_rec_ppem,
             font_direction_hint,
             index_to_loc_format,
@@ -54,5 +54,4 @@ impl Describe for HeadTableRepr {
         })
     }
 }
-
 describe_impl! { Debug, Serialize for HeadTableRepr }

@@ -54,5 +54,4 @@ impl Describe for HheaTableRepr {
         })
     }
 }
-
 describe_impl! { Debug, Serialize for HheaTableRepr }
