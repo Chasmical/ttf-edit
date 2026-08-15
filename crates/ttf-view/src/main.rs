@@ -208,18 +208,20 @@ fn print_tables() {
 
 Currently only the following OpenType tables can be exported:
 
-<s>cmap</>  Character Mapping Table
 <s>head</>  Font Header Table
 <s>hhea</>  Horizontal Header Table
 <s>hmtx</>  Horizontal Metrics Table
 <s>maxp</>  Maximum Profile
 <s>name</>  Naming Table
+<s>OS/2</>  OS/2 and Windows Metrics Table
 
 Note: <s>bin</> format is always available for any tables.
 
 "#
     )
     .trim_ascii();
+
+// <s>cmap</>  Character Mapping Table
 
     eprintln!("{}", TABLES);
 }

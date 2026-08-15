@@ -26,7 +26,7 @@ Arguments:
   <FONT>  Path to the OpenType font file to view (.ttf, .otf)
 
 Options:
-  -f, --format <FORMAT>  The format to dump the table data in (possible values: dbg/debug, bin/binary)
+  -f, --format <FORMAT>  The format to dump the table data in [default: debug] (possible values: dbg/debug, json, bin/binary)
   -t, --table <TAG>      The table to dump (omit to dump the table directory)
       --list-tables      List all supported OpenType tables (binary format always works)
   -h, --help             Print help
@@ -69,28 +69,49 @@ TableDirectory {
 ```
 
 ```
-> ttf-view test.ttf -t head
+> ttf-view test.ttf -t head -f json
 
-HeadTable {
-    major_version: 1,
-    minor_version: 0,
-    font_revision: 1.6,
-    checksum_adjustment: 0x62E47DE8,
-    magic_number: 0x5F0F3CF5,
-    flags: 0b000000000010001,
-    units_per_em: 2048,
-    created: 2025-02-12T02:03:10Z,
-    modified: 2026-07-31T13:46:51Z,
-    x_min: -717,
-    y_min: -501,
-    x_max: 2758,
-    y_max: 1975,
-    mac_style: 0b0000000,
-    lowest_rec_ppem: 9,
-    font_direction_hint: 2,
-    index_to_loc_format: 1,
-    glyph_data_format: 0,
+{
+  "major_version": 1,
+  "minor_version": 0,
+  "font_revision": 1.600006103515625,
+  "checksum_adjustment": 1659141608,
+  "magic_number": 1594834165,
+  "flags": 17,
+  "units_per_em": 2048,
+  "created": "2025-02-12T02:03:10Z",
+  "modified": "2026-07-31T13:46:51Z",
+  "x_min": -717,
+  "y_min": -501,
+  "x_max": 2758,
+  "y_max": 1975,
+  "mac_style": 0,
+  "lowest_rec_ppem": 9,
+  "font_direction_hint": 2,
+  "index_to_loc_format": 1,
+  "glyph_data_format": 0
 }
+```
+
+```
+> ttf-view test.ttf -t name
+
+NameTable {
+    version: 0,
+    count: 50,
+    storage_offset: 0x025E,
+    name_records: [
+        NameRecord {
+            platform_id: 1 (Macintosh),
+            encoding_id: 0 (Roman),
+            language_id: 0x0000 (en: English),
+            name_id: 0,
+            length: 50,
+            string_offset: 0x0000,
+            value: Ok("© 2025 Microsoft Corporation. All Rights Reserved."),
+        },
+        NameRecord {
+............................................................................
 ```
 
 
